@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+
+- Force Home Assistant to load the new frontend by changing the custom element name and panel module version.
+
 ## 0.2.4
 
 - Bust frontend cache with a versioned panel URL.

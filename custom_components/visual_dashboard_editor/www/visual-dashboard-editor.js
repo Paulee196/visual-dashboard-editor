@@ -1,5 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.4";
+const UI_VERSION = "0.2.5";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v2";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -16,7 +17,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       elementFilter: "",
       dirty: false,
       loading: false,
-      status: "Vyber YAML dashboard.",
+      status: "Vyber dashboard.",
       error: "",
     };
   }
@@ -1379,4 +1380,6 @@ const styles = `
   }
 `;
 
-customElements.define("visual-dashboard-editor-panel", VisualDashboardEditorPanel);
+if (!customElements.get(ELEMENT_NAME)) {
+  customElements.define(ELEMENT_NAME, VisualDashboardEditorPanel);
+}
