@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.8";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v5";
+const UI_VERSION = "0.2.9";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v6";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -16,8 +16,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       advancedDirty: false,
       advancedExpanded: false,
       elementFilter: "",
-      previewSize: "phone-414x896",
-      previewOrientation: "portrait",
+      previewSize: "display-24",
+      previewOrientation: "landscape",
       dirty: false,
       loading: false,
       status: "Vyber dashboard.",
@@ -284,25 +284,20 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   previewPresets() {
     return [
-      { key: "phone-360x800", group: "Telefony", label: "Android 360 x 800", width: 360, height: 800 },
-      { key: "phone-375x812", group: "Telefony", label: "iPhone 375 x 812", width: 375, height: 812 },
-      { key: "phone-390x844", group: "Telefony", label: "iPhone 390 x 844", width: 390, height: 844 },
-      { key: "phone-393x873", group: "Telefony", label: "Android 393 x 873", width: 393, height: 873 },
-      { key: "phone-414x896", group: "Telefony", label: "414 x 896", width: 414, height: 896 },
-      { key: "phone-430x932", group: "Telefony", label: "iPhone Plus 430 x 932", width: 430, height: 932 },
-      { key: "phone-440x956", group: "Telefony", label: "iPhone Pro Max 440 x 956", width: 440, height: 956 },
-      { key: "phone-412x915", group: "Telefony", label: "Pixel/Galaxy 412 x 915", width: 412, height: 915 },
-      { key: "phone-448x998", group: "Telefony", label: "Velky Android 448 x 998", width: 448, height: 998 },
-      { key: "tablet-768x1024", group: "Tablety", label: "Tablet 768 x 1024", width: 768, height: 1024 },
-      { key: "tablet-800x1280", group: "Tablety", label: "Android tablet 800 x 1280", width: 800, height: 1280 },
-      { key: "tablet-820x1180", group: "Tablety", label: "iPad 820 x 1180", width: 820, height: 1180 },
-      { key: "tablet-834x1194", group: "Tablety", label: "iPad Pro 11 834 x 1194", width: 834, height: 1194 },
-      { key: "tablet-1024x1366", group: "Tablety", label: "iPad 13 1024 x 1366", width: 1024, height: 1366 },
-      { key: "display-1366x768", group: "Displeje", label: "Notebook 1366 x 768", width: 1366, height: 768 },
-      { key: "display-1536x864", group: "Displeje", label: "Notebook 1536 x 864", width: 1536, height: 864 },
-      { key: "display-1920x1080", group: "Displeje", label: "Full HD 1920 x 1080", width: 1920, height: 1080 },
-      { key: "display-2560x1440", group: "Displeje", label: "QHD 2560 x 1440", width: 2560, height: 1440 },
-      { key: "display-3840x2160", group: "Displeje", label: "4K 3840 x 2160", width: 3840, height: 2160 },
+      { key: "phone-61", group: "Telefony", label: '6,1" iPhone / Galaxy S', width: 390, height: 844 },
+      { key: "phone-63", group: "Telefony", label: '6,3" iPhone Pro / Galaxy S', width: 402, height: 874 },
+      { key: "phone-65", group: "Telefony", label: '6,5" iPhone / Samsung', width: 414, height: 896 },
+      { key: "phone-67", group: "Telefony", label: '6,7" iPhone Plus / Galaxy+', width: 430, height: 932 },
+      { key: "phone-69", group: "Telefony", label: '6,9" iPhone Max / Galaxy Ultra', width: 440, height: 956 },
+      { key: "tablet-89", group: "Tablety", label: '8,9" kompaktni tablet', width: 768, height: 1024 },
+      { key: "tablet-10", group: "Tablety", label: '10" tablet', width: 800, height: 1280 },
+      { key: "tablet-11", group: "Tablety", label: '11" iPad / Galaxy Tab', width: 834, height: 1194 },
+      { key: "tablet-13", group: "Tablety", label: '13" iPad Pro / Galaxy Tab', width: 1024, height: 1366 },
+      { key: "display-13", group: "Obrazovky", label: '13" notebook', width: 1280, height: 800 },
+      { key: "display-156", group: "Obrazovky", label: '15,6" notebook', width: 1366, height: 768 },
+      { key: "display-24", group: "Obrazovky", label: '24" monitor Full HD', width: 1920, height: 1080 },
+      { key: "display-27", group: "Obrazovky", label: '27" monitor QHD', width: 2560, height: 1440 },
+      { key: "display-32", group: "Obrazovky", label: '32" monitor 4K', width: 3840, height: 2160 },
     ];
   }
 
@@ -640,52 +635,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   async mountRealCard() {
-    const frame = this.shadowRoot.querySelector("#cardFrame");
+    const host = this.shadowRoot.querySelector("#realCardHost");
     const stage = this.shadowRoot.querySelector(".plan-stage");
     const error = this.shadowRoot.querySelector("#previewRenderError");
     const card = this.currentCard();
     const cardIndex = this.state.cardIndex;
     this._realCard = null;
 
-    if (!frame || !stage || !card?.config || !this.hass) return;
+    if (!host || !stage || !card?.config || !this.hass) return;
     this._frameResizeObserver?.disconnect();
     this._frameResizeObserver = null;
 
     try {
-      const dimensions = this.previewDimensions();
-      frame.style.height = `${dimensions.height}px`;
-      stage.style.height = `${dimensions.height}px`;
-
-      const doc = frame.contentDocument;
-      if (!doc) {
-        throw new Error("Iframe dokument neni dostupny.");
-      }
-
-      doc.open();
-      doc.write(`
-        <!doctype html>
-        <html>
-          <head>
-            <style>
-              html, body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                min-height: 1px;
-                overflow: hidden;
-                background: transparent;
-                color-scheme: light dark;
-                font-family: system-ui, sans-serif;
-              }
-              #root { width: 100%; }
-              #root > * { display: block; width: 100%; }
-            </style>
-          </head>
-          <body><div id="root"></div></body>
-        </html>
-      `);
-      doc.close();
-
       const config = this.cloneConfig(card.config);
       let element;
       if (window.loadCardHelpers) {
@@ -695,30 +656,17 @@ class VisualDashboardEditorPanel extends HTMLElement {
         element = document.createElement("hui-picture-elements-card");
         element.setConfig(config);
       }
-      if (!frame.isConnected || this.state.cardIndex !== cardIndex) return;
+      if (!host.isConnected || this.state.cardIndex !== cardIndex) return;
       element.hass = this.hass;
       element.classList.add("real-card");
-      doc.getElementById("root").appendChild(element);
+      host.replaceChildren(element);
       this._realCard = element;
       stage.classList.add("real-ready");
       stage.classList.remove("real-failed");
+      stage.style.height = "";
       if (error) error.textContent = "";
-
-      const syncHeight = () => {
-        if (!frame.isConnected || this.state.cardIndex !== cardIndex) return;
-        const height = Math.max(
-          220,
-          Math.ceil(element.getBoundingClientRect().height || doc.body.scrollHeight || 0)
-        );
-        frame.style.height = `${height}px`;
-        stage.style.height = `${height}px`;
-      };
-      requestAnimationFrame(syncHeight);
-      setTimeout(syncHeight, 80);
-      setTimeout(syncHeight, 400);
-      this._frameResizeObserver = new ResizeObserver(syncHeight);
-      this._frameResizeObserver.observe(element);
     } catch (err) {
+      host.replaceChildren();
       stage.classList.remove("real-ready");
       stage.classList.add("real-failed");
       stage.style.height = "";
@@ -809,7 +757,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       </div>
       <div class="preview-frame">
         <div class="plan-stage" style="width:${dimensions.width}px;" data-viewport="${dimensions.width}x${dimensions.height}">
-          <iframe id="cardFrame" class="card-frame" title="Nahled dashboardu"></iframe>
+          <div id="realCardHost" class="real-card-host"></div>
           <div class="fallback-preview">
             ${
               image
@@ -1451,15 +1399,15 @@ const styles = `
     background-position: 0 0, 0 12px, 12px -12px, -12px 0;
   }
 
-  .card-frame {
-    display: block;
-    width: 100%;
-    height: 220px;
-    border: 0;
+  .real-card-host {
     position: relative;
     z-index: 1;
-    background: transparent;
     pointer-events: none;
+  }
+
+  .real-card-host > * {
+    display: block;
+    width: 100%;
   }
 
   .fallback-preview {

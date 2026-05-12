@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.9
+
+- Restore the normal Home Assistant card preview instead of the iframe viewport experiment.
+- Rename viewport presets to inch-based phone, tablet and screen sizes, focused on iPhone/Samsung-style sizes.
+
 ## 0.2.8
 
 - Render the real card inside an internal viewport preview so width-based responsive CSS behaves closer to phone and tablet screens.
