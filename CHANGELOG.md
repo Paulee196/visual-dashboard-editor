@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.11
+
+- Allow small phone and tablet previews to upscale visually in the editor while keeping their selected logical viewport size.
+
 ## 0.2.10
 
 - Fit large virtual display previews into the available editor area so the full dashboard stays visible.

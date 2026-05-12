@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.10";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v7";
+const UI_VERSION = "0.2.11";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v8";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -654,7 +654,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const availableWidth = Math.max(280, frame.clientWidth || frameRect.width || dimensions.width);
     const availableHeight = Math.max(280, window.innerHeight - fitRect.top - 26);
     const rawHeight = Math.max(stage.scrollHeight, stage.offsetHeight, dimensions.height, 220);
-    const scale = Math.min(1, availableWidth / dimensions.width, availableHeight / rawHeight);
+    const maxUpscale = dimensions.width <= 520 ? 2.1 : dimensions.width <= 1100 ? 1.45 : 1;
+    const scale = Math.min(maxUpscale, availableWidth / dimensions.width, availableHeight / rawHeight);
 
     stage.style.setProperty("--preview-scale", String(scale));
     fit.style.height = `${Math.ceil(rawHeight * scale)}px`;
