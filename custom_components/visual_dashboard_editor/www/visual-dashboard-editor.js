@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.5";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v2";
+const UI_VERSION = "0.2.6";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v3";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -265,6 +265,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const literal = this.literalLabel(config.name) || this.literalLabel(config.title);
     if (literal) return literal;
 
+    const customTitle = this.literalLabel(config.custom_fields?.title);
+    if (customTitle) return customTitle;
+
     if (config.type === "image") {
       const imageLabel = this.labelFromImage(config.image);
       if (imageLabel) return imageLabel;
@@ -339,9 +342,16 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
     if (config.entity === "sensor.time" || joined.includes("sensor.time")) return "Cas a datum";
     if (cardType.includes("calendar") || joined.includes("calendar.")) return "Kalendar";
-    if (joined.includes("vacuum.bob") || json.includes("vacuum.bob")) return "Vysavac Bob";
+    if (
+      json.includes("stav dom") ||
+      json.includes("status-line") ||
+      json.includes("trackedavailability") ||
+      json.includes("messages.push")
+    ) {
+      return "Stav domacnosti";
+    }
     if (joined.includes("mhd_skola_snp") || json.includes("skola snp")) return "Skola SNP MHD";
-    if (json.includes("stav dom") || json.includes("status-line")) return "Stav domacnosti";
+    if (joined.includes("vacuum.bob") || json.includes("vacuum.bob")) return "Vysavac Bob";
     if (joined.includes("pracka") || joined.includes("susicka")) return "Pracka / susicka";
     if (joined.includes("person.pavel") || joined.includes("person.misa")) return "Osoby";
     if (joined.includes("teplota") || joined.includes("humidity") || joined.includes("vlhkost") || joined.includes("co2")) {
@@ -487,10 +497,31 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return "label";
   }
 
+  isAreaElement(config, style) {
+    if (!style || (!style.width && !style.height)) return false;
+    if (config.type === "image") return true;
+    if (this.isTransparentCard(config)) return true;
+
+    const width = String(style.width || "");
+    const height = String(style.height || "");
+    return (
+      width.includes("%") ||
+      height.includes("%") ||
+      width.includes("clamp") ||
+      height.includes("clamp") ||
+      width.includes("fit-content") ||
+      height.includes("fit-content")
+    );
+  }
+
   elementClasses(element, style) {
     const config = element.config || {};
     const kind = this.elementKind(config);
-    const classes = ["plan-element", `element-${kind}`];
+    const classes = [
+      "plan-element",
+      `element-${kind}`,
+      this.isAreaElement(config, style) ? "element-area" : "element-marker",
+    ];
     if (this.samePath(element.path, this.state.selectedElementPath)) classes.push("selected");
     if (style.width || style.height) classes.push("has-explicit-size");
     if (element.parent) classes.push("nested-element");
@@ -507,29 +538,33 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return "mdi:vector-point";
   }
 
-  renderElementContent(element) {
+  previewIcon(element) {
     const config = element.config || {};
-    const image = config.image || (config.state_image && Object.values(config.state_image)[0]);
-    if (config.type === "image" && image) {
-      return `<img class="element-image" src="${this.escape(this.imageUrl(image))}" alt="">`;
-    }
-    const kind = this.elementKind(config);
-    const icon = config.icon || (config.type === "state-icon" ? "mdi:circle-medium" : this.fallbackIcon(config));
-    const label = this.shortLabel(element);
+    if (config.icon) return config.icon;
 
-    if (kind === "hotspot") {
-      return `<span class="hotspot-label">${this.escape(label)}</span>`;
-    }
-    if (kind === "icon") {
-      return `<ha-icon class="ha-like-icon" icon="${this.escape(icon)}"></ha-icon>`;
-    }
-    if (kind === "calendar" || kind === "stack") {
-      return `<ha-icon class="ha-like-icon" icon="${this.escape(icon)}"></ha-icon><span>${this.escape(label)}</span>`;
-    }
-    if (kind === "widget") {
-      return `<span class="widget-label">${this.escape(label)}</span>`;
-    }
-    return `<ha-icon class="ha-like-icon" icon="${this.escape(icon)}"></ha-icon><span>${this.escape(label)}</span>`;
+    const label = this.displayLabel(element).toLowerCase();
+    if (label.includes("cas") || label.includes("datum")) return "mdi:chart-line";
+    if (label.includes("klima") || label.includes("teplota")) return "mdi:thermometer";
+    if (label.includes("kalendar")) return "mdi:calendar";
+    if (label.includes("osob")) return "mdi:account-group";
+    if (label.includes("vysavac")) return "mdi:robot-vacuum";
+    if (label.includes("energie")) return "mdi:lightning-bolt";
+    if (label.includes("hudba")) return "mdi:music";
+    if (label.includes("stav dom")) return "mdi:format-list-bulleted";
+    if (config.type === "image") return "mdi:image-outline";
+    if (this.isTransparentCard(config)) return "mdi:gesture-tap";
+    return config.type === "state-icon" ? "mdi:circle-medium" : this.fallbackIcon(config);
+  }
+
+  renderElementContent(element) {
+    const label = this.displayLabel(element);
+    const icon = this.previewIcon(element);
+    return `
+      <span class="element-chip">
+        <ha-icon class="chip-icon" icon="${this.escape(icon)}"></ha-icon>
+        <span class="chip-label">${this.escape(label)}</span>
+      </span>
+    `;
   }
 
   renderPreview() {
@@ -578,19 +613,6 @@ class VisualDashboardEditorPanel extends HTMLElement {
               (candidate, index) =>
                 `<option value="${index}" ${index === this.state.cardIndex ? "selected" : ""}>
                   ${this.escape(candidate.title)}
-                </option>`
-            )
-            .join("")}
-        </select>
-        <select id="elementSelect">
-          <option value="">Vyber prvek...</option>
-          ${card.elements
-            .map(
-              (element, index) =>
-                `<option value="${index}" ${
-                  this.samePath(element.path, this.state.selectedElementPath) ? "selected" : ""
-                }>
-                  ${this.escape(this.displayLabel(element))}
                 </option>`
             )
             .join("")}
@@ -816,14 +838,6 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.advancedText = "";
       this.state.advancedDirty = false;
       this.render();
-    });
-
-    const elementSelect = this.shadowRoot.querySelector("#elementSelect");
-    elementSelect?.addEventListener("change", (event) => {
-      const elementIndex = Number.parseInt(event.target.value, 10);
-      if (Number.isFinite(elementIndex)) {
-        this.selectElement(this.state.cardIndex, elementIndex);
-      }
     });
 
     this.shadowRoot.querySelectorAll(".plan-element").forEach((node) => {
@@ -1134,12 +1148,15 @@ const styles = `
   }
 
   .preview-toolbar select {
+    flex: 0 1 420px;
     max-width: 420px;
   }
 
   .preview-toolbar span {
     color: var(--vde-muted);
     font-size: 13px;
+    margin-left: auto;
+    white-space: nowrap;
   }
 
   .plan-stage {
@@ -1182,17 +1199,16 @@ const styles = `
   .plan-element {
     position: absolute;
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    min-width: 30px;
-    min-height: 30px;
-    padding: 4px 6px;
-    border: 1px solid rgba(11, 107, 203, 0.5);
-    background: rgba(255, 255, 255, 0.75);
-    color: #102a43;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
-    overflow: hidden;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: white;
+    box-shadow: none;
+    overflow: visible;
     touch-action: none;
   }
 
@@ -1201,79 +1217,73 @@ const styles = `
   }
 
   .plan-element.selected {
-    border: 2px solid #ffb000;
-    box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.28);
     z-index: 1000;
   }
 
-  .plan-element span {
-    max-width: 100%;
+  .element-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 24px;
+    max-width: 170px;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    background: rgba(8, 18, 26, 0.88);
+    color: #ffffff;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+  }
+
+  .chip-icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+
+  .chip-label {
+    min-width: 0;
+    max-width: 130px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12px;
-  }
-
-  .plan-element.element-image {
-    border: 1px solid rgba(11, 107, 203, 0.18);
-    background: transparent;
-    box-shadow: none;
-    color: transparent;
-  }
-
-  .plan-element.element-image.selected {
-    border-color: #ffb000;
-  }
-
-  .element-hotspot {
-    background: rgba(0, 146, 255, 0.08);
-    border: 1px dashed rgba(0, 190, 255, 0.9);
-    color: #ffffff;
-    box-shadow: inset 0 0 0 1px rgba(0, 70, 120, 0.22);
-  }
-
-  .hotspot-label {
-    align-self: flex-start;
-    justify-self: flex-start;
-    max-width: calc(100% - 8px);
-    margin: 4px;
-    border-radius: 4px;
-    padding: 2px 5px;
-    background: rgba(0, 0, 0, 0.55);
-    color: white;
     font-size: 11px;
-    line-height: 1.2;
-  }
-
-  .element-icon {
-    width: auto;
-    height: auto;
-    min-width: 38px;
-    min-height: 38px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    background: rgba(15, 15, 15, 0.78);
-    color: rgba(255, 255, 255, 0.88);
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
-  }
-
-  .element-calendar,
-  .element-stack,
-  .element-widget {
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 8px;
-    background: rgba(8, 18, 26, 0.78);
-    color: white;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
-    padding: 6px 9px;
-  }
-
-  .element-widget.has-explicit-size {
-    padding: 6px 9px;
-  }
-
-  .widget-label {
     font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .element-area {
+    min-width: 38px;
+    min-height: 28px;
+    border: 1px dashed rgba(0, 190, 255, 0.75);
+    border-radius: 5px;
+    background: rgba(0, 146, 255, 0.045);
+    box-shadow: inset 0 0 0 1px rgba(0, 70, 120, 0.16);
+  }
+
+  .element-area .element-chip {
+    margin: 4px;
+    max-width: calc(100% - 8px);
+  }
+
+  .element-area .chip-label {
+    max-width: calc(100% - 24px);
+  }
+
+  .element-marker {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .element-marker.selected .element-chip,
+  .element-area.selected {
+    border-color: #ffb000;
+    box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.28);
+  }
+
+  .element-area.selected .element-chip {
+    border-color: rgba(255, 176, 0, 0.78);
   }
 
   .nested-element::after {
@@ -1291,11 +1301,7 @@ const styles = `
   }
 
   img.element-image {
-    width: 100%;
-    height: 100%;
-    min-width: 28px;
-    min-height: 28px;
-    object-fit: contain;
+    display: none;
     pointer-events: none;
   }
 

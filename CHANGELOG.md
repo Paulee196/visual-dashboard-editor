@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6
+
+- Remove the duplicate element picker above the preview.
+- Render preview elements as consistent editor chips instead of mixed card-like shapes.
+- Prefer explicit titles and status content when naming elements, so the household status bar is not mislabeled as the vacuum.
+
 ## 0.2.5
 
 - Force Home Assistant to load the new frontend by changing the custom element name and panel module version.
