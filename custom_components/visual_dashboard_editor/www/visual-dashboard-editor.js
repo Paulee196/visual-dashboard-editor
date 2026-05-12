@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.12";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v9";
+const UI_VERSION = "0.2.13";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v10";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -18,6 +18,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       elementFilter: "",
       previewSize: "display-24",
       previewOrientation: "landscape",
+      previewScaleMode: "fit",
       dirty: false,
       loading: false,
       status: "Vyber dashboard.",
@@ -661,6 +662,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const availableWidth = Math.max(280, frame.clientWidth || frameRect.width || dimensions.width);
     const availableHeight = Math.max(280, window.innerHeight - fitRect.top - 26);
     const rawHeight = Math.max(stage.scrollHeight, stage.offsetHeight, dimensions.height, 220);
+    if (this.state.previewScaleMode === "actual") {
+      stage.style.setProperty("--preview-scale", "1");
+      fit.style.height = `${Math.ceil(rawHeight)}px`;
+      return;
+    }
+
     const maxUpscale = dimensions.width <= 520 ? 2.1 : dimensions.width <= 1100 ? 1.45 : 1;
     const scale = Math.min(maxUpscale, availableWidth / dimensions.width, availableHeight / rawHeight);
 
@@ -800,9 +807,13 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <option value="portrait" ${this.state.previewOrientation === "portrait" ? "selected" : ""}>Na vysku</option>
           <option value="landscape" ${this.state.previewOrientation === "landscape" ? "selected" : ""}>Na sirku</option>
         </select>
-        <span>${visibleCount} prvku s pozici</span>
+        <select id="previewScaleMode" title="Meritko nahledu">
+          <option value="fit" ${this.state.previewScaleMode === "fit" ? "selected" : ""}>Vejit cele</option>
+          <option value="actual" ${this.state.previewScaleMode === "actual" ? "selected" : ""}>1:1 CSS px</option>
+        </select>
+        <span>${dimensions.width} x ${dimensions.height} CSS px - ${visibleCount} prvku s pozici</span>
       </div>
-      <div class="preview-frame">
+      <div class="preview-frame scale-${this.escape(this.state.previewScaleMode)}">
         <div id="previewFit" class="preview-fit">
           <div class="plan-stage" style="width:${dimensions.width}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
             ${
@@ -1075,6 +1086,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const previewOrientation = this.shadowRoot.querySelector("#previewOrientation");
     previewOrientation?.addEventListener("change", (event) => {
       this.state.previewOrientation = event.target.value;
+      this.render();
+    });
+
+    const previewScaleMode = this.shadowRoot.querySelector("#previewScaleMode");
+    previewScaleMode?.addEventListener("change", (event) => {
+      this.state.previewScaleMode = event.target.value;
       this.render();
     });
 
@@ -1423,6 +1440,10 @@ const styles = `
     flex: 0 0 120px;
   }
 
+  #previewScaleMode {
+    flex: 0 0 128px;
+  }
+
   .preview-toolbar span {
     color: var(--vde-muted);
     font-size: 13px;
@@ -1436,6 +1457,16 @@ const styles = `
     padding-bottom: 8px;
   }
 
+  .preview-frame.scale-fit {
+    overflow: hidden;
+  }
+
+  .preview-frame.scale-actual {
+    overflow: auto;
+    max-height: calc(100vh - 152px);
+    padding-bottom: 12px;
+  }
+
   .preview-fit {
     position: relative;
     display: flex;
@@ -1443,6 +1474,12 @@ const styles = `
     align-items: flex-start;
     width: 100%;
     min-height: 220px;
+  }
+
+  .preview-frame.scale-actual .preview-fit {
+    justify-content: flex-start;
+    width: max-content;
+    min-width: 100%;
   }
 
   .plan-stage {
@@ -1464,6 +1501,11 @@ const styles = `
     background-position: 0 0, 0 12px, 12px -12px, -12px 0;
     transform: scale(var(--preview-scale, 1));
     transform-origin: top center;
+  }
+
+  .preview-frame.scale-actual .plan-stage {
+    margin: 0;
+    transform-origin: top left;
   }
 
   .real-card-host {

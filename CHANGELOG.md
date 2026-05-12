@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.13
+
+- Add a preview scale selector with a whole-dashboard fit mode and an exact 1:1 CSS viewport mode.
+- Keep large monitor and phone previews contained inside the editor while allowing exact viewport comparison between Full HD, QHD and 4K presets.
+
 ## 0.2.12
 
 - Use the real Lovelace view URL for UI dashboard previews so viewport-dependent CSS, `vw` units and media queries behave like the official dashboard.
