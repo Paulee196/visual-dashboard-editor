@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Bust frontend cache with a versioned panel URL.
+- Prefer frontend labels derived from controlled entities, HA friendly names, icons and sensor content.
+
 ## 0.2.3
 
 - Improve element labels so custom cards are named by their visible purpose instead of card implementation.

@@ -1,6 +1,7 @@
 """Constants for Visual Dashboard Editor."""
 
 DOMAIN = "visual_dashboard_editor"
+VERSION = "0.2.4"
 
 PANEL_ELEMENT = "visual-dashboard-editor-panel"
 PANEL_TITLE = "Visual Dashboard Editor"

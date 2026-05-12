@@ -1,4 +1,5 @@
 const DOMAIN = "visual_dashboard_editor";
+const UI_VERSION = "0.2.4";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -116,7 +117,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.selectedElementPath = [...element.path];
     this.state.advancedText = element.fragment || "";
     this.state.advancedDirty = false;
-    this.state.status = `Vybrano: ${element.label}`;
+    this.state.status = `Vybrano: ${this.displayLabel(element)}`;
     this.render();
   }
 
@@ -255,17 +256,172 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   shortLabel(element) {
+    return this.displayLabel(element);
+  }
+
+  displayLabel(element) {
     const config = element.config || {};
+    const literal = this.literalLabel(config.name) || this.literalLabel(config.title);
+    if (literal) return literal;
+
+    if (config.type === "image") {
+      const imageLabel = this.labelFromImage(config.image);
+      if (imageLabel) return imageLabel;
+    }
+
+    const contentLabel = this.labelFromContent(config);
+    if (contentLabel) return contentLabel;
+
+    const entity = this.primaryEntity(config);
+    if (entity) return this.friendlyEntityName(entity);
+
+    if (config.icon) return this.labelFromIcon(config.icon);
+    if (element.label && !this.isImplementationLabel(element.label)) return element.label;
+    return this.labelFromCardType(config.card_type || config.type || "element");
+  }
+
+  literalLabel(value) {
+    if (typeof value !== "string") return "";
+    const text = value.trim();
+    if (!text || text.includes("[[[") || text.includes("{{") || text.includes("{%")) return "";
+    return text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  isImplementationLabel(value) {
+    const text = String(value || "").toLowerCase();
     return (
-      config.name ||
-      config.title ||
-      element.label ||
-      config.entity ||
-      config.icon ||
-      config.card_type ||
-      config.type ||
-      "element"
+      text === "custom:hui-element" ||
+      text === "custom:button-card" ||
+      text === "button card" ||
+      text === "hui element" ||
+      text.startsWith("custom:")
     );
+  }
+
+  labelFromCardType(value) {
+    const text = String(value || "element").replace(/^custom:/, "").replace(/-/g, " ");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  labelFromImage(value) {
+    if (!value) return "";
+    const image = String(value);
+    const lowered = image.toLowerCase();
+    if (lowered.startsWith("data:image") && lowered.includes("fill='black'")) {
+      return "Levy panel";
+    }
+    const file = image.split("?")[0].split("/").pop() || "";
+    const stem = file.replace(/\.[^.]+$/, "").replace(/^planek[-_]?/i, "");
+    return this.humanizeId(stem);
+  }
+
+  labelFromIcon(icon) {
+    const map = {
+      "mdi:robot-vacuum": "Vysavac Bob",
+      "mdi:television": "TV",
+      "mdi:lock": "Otevirani dveri",
+      "mdi:music": "Hudba",
+      "mdi:cog": "Nastaveni",
+      "mdi:lightning-bolt": "Energie",
+      "mdi:washing-machine": "Pracka / susicka",
+      "mdi:lightbulb-on": "Svetlo",
+      "mdi:lightbulb-outline": "Svetlo",
+    };
+    return map[icon] || this.humanizeId(String(icon).replace(/^mdi:/, ""));
+  }
+
+  labelFromContent(config) {
+    const cardType = String(config.card_type || config.type || "");
+    const ids = this.entityIdsFromConfig(config);
+    const joined = ids.join(" ").toLowerCase();
+    const json = JSON.stringify(config).toLowerCase();
+
+    if (config.entity === "sensor.time" || joined.includes("sensor.time")) return "Cas a datum";
+    if (cardType.includes("calendar") || joined.includes("calendar.")) return "Kalendar";
+    if (joined.includes("vacuum.bob") || json.includes("vacuum.bob")) return "Vysavac Bob";
+    if (joined.includes("mhd_skola_snp") || json.includes("skola snp")) return "Skola SNP MHD";
+    if (json.includes("stav dom") || json.includes("status-line")) return "Stav domacnosti";
+    if (joined.includes("pracka") || joined.includes("susicka")) return "Pracka / susicka";
+    if (joined.includes("person.pavel") || joined.includes("person.misa")) return "Osoby";
+    if (joined.includes("teplota") || joined.includes("humidity") || joined.includes("vlhkost") || joined.includes("co2")) {
+      if (joined.includes("obyvak")) return "Obyvak klima";
+      if (joined.includes("loznice")) return "Loznice klima";
+      if (joined.includes("fp300") || joined.includes("koupelna")) return "Koupelna klima";
+      return "Teplota / klima";
+    }
+
+    if (ids.length) return this.friendlyEntityName(ids[0]);
+    return "";
+  }
+
+  primaryEntity(config) {
+    if (typeof config.entity === "string") return config.entity;
+    const ids = this.entityIdsFromConfig(config);
+    return ids[0] || "";
+  }
+
+  entityIdsFromConfig(config) {
+    const ids = new Set();
+    const visit = (value, key = "") => {
+      if (typeof value === "string") {
+        if ((key === "entity" || key === "entity_id") && value.includes(".")) ids.add(value);
+        for (const match of value.matchAll(/(?:states\[['"]|state_attr\(['"])([a-z_]+\.[^'"]+)['"]/g)) {
+          ids.add(match[1]);
+        }
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach((item) => visit(item, key));
+        return;
+      }
+      if (value && typeof value === "object") {
+        Object.entries(value).forEach(([childKey, childValue]) => visit(childValue, childKey));
+      }
+    };
+    visit(config);
+    return [...ids];
+  }
+
+  friendlyEntityName(entityId) {
+    const state = this.hass?.states?.[entityId];
+    return state?.attributes?.friendly_name || this.humanizeEntityId(entityId);
+  }
+
+  humanizeEntityId(entityId) {
+    const objectId = String(entityId || "").split(".").pop().replace(/_group$/, "");
+    return this.humanizeId(objectId);
+  }
+
+  humanizeId(value) {
+    const replacements = {
+      obyvak: "Obyvak",
+      loznice: "Loznice",
+      kuchyn: "Kuchyn",
+      koupelna: "Koupelna",
+      zachod: "Zachod",
+      pracovna: "Pracovna",
+      svetla: "Svetla",
+      svetlo: "Svetlo",
+      vypinac: "Vypinac",
+      hosti: "Hoste",
+      otevirani: "Otevirani",
+      dveri: "dveri",
+      mhd: "MHD",
+      skola: "Skola",
+      snp: "SNP",
+      next: "odjezdy",
+      time: "Cas",
+      vykon: "vykon",
+      pracka: "pracka",
+      susicka: "susicka",
+    };
+    return String(value || "")
+      .replace(/[^0-9A-Za-zÀ-ž]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) => replacements[word.toLowerCase()] || word)
+      .join(" ");
   }
 
   elementSummary(element) {
@@ -281,7 +437,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (style.left || style.top) parts.push(`${style.left || "-"}, ${style.top || "-"}`);
     if (kind === "hotspot") parts.push("hotspot");
 
-    return parts.filter(Boolean).join(" · ");
+    return parts.filter(Boolean).join(" - ");
   }
 
   filteredElements() {
@@ -292,7 +448,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       .map((element, index) => ({ element, index }))
       .filter(({ element }) => {
         if (!query) return true;
-        const haystack = `${element.label} ${this.elementSummary(element)}`.toLowerCase();
+        const haystack = `${this.displayLabel(element)} ${element.label} ${this.elementSummary(element)}`.toLowerCase();
         return haystack.includes(query);
       });
   }
@@ -405,7 +561,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
             style="left:${left};top:${top};${width}${height}${opacity}${transform}"
             data-card-index="${this.state.cardIndex}"
             data-element-index="${index}"
-            title="${this.escape(element.label)}"
+            title="${this.escape(this.displayLabel(element))}"
           >
             ${this.renderElementContent(element)}
           </button>
@@ -433,7 +589,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
                 `<option value="${index}" ${
                   this.samePath(element.path, this.state.selectedElementPath) ? "selected" : ""
                 }>
-                  ${this.escape(element.label)}
+                  ${this.escape(this.displayLabel(element))}
                 </option>`
             )
             .join("")}
@@ -468,8 +624,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       <section class="inspector">
         <div class="inspector-head">
           <div>
-            <h2>${this.escape(element.label)}</h2>
-            <p>${this.escape(config.type || "element")}${element.line ? ` · radek ${element.line}` : ""}</p>
+            <h2>${this.escape(this.displayLabel(element))}</h2>
+            <p>${this.escape(config.card_type || config.type || "element")}${element.line ? ` - radek ${element.line}` : ""}</p>
           </div>
           <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>Ulozit</button>
         </div>
@@ -595,7 +751,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
                   data-card-index="${this.state.cardIndex}"
                   data-element-index="${index}"
                 >
-                  <span class="element-list-title">${this.escape(element.label)}</span>
+                  <span class="element-list-title">${this.escape(this.displayLabel(element))}</span>
                   <span class="element-list-meta">${this.escape(this.elementSummary(element))}</span>
                   ${hasPosition ? "" : `<span class="element-list-badge">bez pozice</span>`}
                 </button>
@@ -616,6 +772,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
             <h1>Visual Dashboard Editor</h1>
             <p>${this.escape(this.state.status)}</p>
           </div>
+          <span class="pill">v${UI_VERSION}</span>
           ${this.state.loading ? `<span class="pill">Pracuju...</span>` : ""}
           ${this.state.dirty || this.state.advancedDirty ? `<span class="pill dirty">Neulozeno</span>` : ""}
         </header>

@@ -22,6 +22,7 @@ from .const import (
     PANEL_URL,
     STATIC_URL,
     LOVELACE_PATH_PREFIX,
+    VERSION,
     WS_LIST_FILES,
     WS_LOAD_FILE,
     WS_SAVE_ELEMENT,
@@ -75,10 +76,10 @@ async def _async_setup_runtime(hass: HomeAssistant) -> None:
 
         if StaticPathConfig is not None:
             await hass.http.async_register_static_paths(
-                [StaticPathConfig(STATIC_URL, str(panel_dir), cache_headers=True)]
+                [StaticPathConfig(STATIC_URL, str(panel_dir), cache_headers=False)]
             )
         else:  # pragma: no cover - compatibility for older HA builds
-            hass.http.register_static_path(STATIC_URL, str(panel_dir), cache_headers=True)
+            hass.http.register_static_path(STATIC_URL, str(panel_dir), cache_headers=False)
         domain_data["static_registered"] = True
 
     if not domain_data.get("panel_registered"):
@@ -86,7 +87,7 @@ async def _async_setup_runtime(hass: HomeAssistant) -> None:
             hass,
             webcomponent_name=PANEL_ELEMENT,
             frontend_url_path=PANEL_URL,
-            module_url=f"{STATIC_URL}/visual-dashboard-editor.js",
+            module_url=f"{STATIC_URL}/visual-dashboard-editor.js?v={VERSION}",
             sidebar_title=PANEL_TITLE,
             sidebar_icon=PANEL_ICON,
             require_admin=True,
