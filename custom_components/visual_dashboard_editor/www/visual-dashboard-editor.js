@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.11";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v8";
+const UI_VERSION = "0.2.12";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v9";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -283,6 +283,13 @@ class VisualDashboardEditorPanel extends HTMLElement {
       return url;
     }
     return `/${url.replace(/^\/+/, "")}`;
+  }
+
+  dashboardPreviewUrl(value) {
+    const url = String(value || "");
+    if (!url) return "";
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}kiosk`;
   }
 
   shortLabel(element) {
@@ -669,6 +676,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const cardIndex = this.state.cardIndex;
     this._realCard = null;
 
+    if (card?.preview_url) {
+      stage?.classList.add("real-ready");
+      stage?.classList.remove("real-failed");
+      requestAnimationFrame(() => this.syncPreviewFit());
+      setTimeout(() => this.syncPreviewFit(), 200);
+      return;
+    }
+
     if (!host || !stage || !card?.config || !this.hass) return;
     this._frameResizeObserver?.disconnect();
     this._frameResizeObserver = null;
@@ -715,6 +730,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       return `<div class="empty-state">Vyber UI dashboard nebo YAML soubor s picture-elements kartou.</div>`;
     }
     const image = this.imageUrl(card.image);
+    const dashboardUrl = this.dashboardPreviewUrl(card.preview_url);
     const visibleCount = card.elements.filter((element) =>
       this.hasPosition((element.config || {}).style || {})
     ).length;
@@ -788,8 +804,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
       </div>
       <div class="preview-frame">
         <div id="previewFit" class="preview-fit">
-          <div class="plan-stage" style="width:${dimensions.width}px;" data-viewport="${dimensions.width}x${dimensions.height}">
-            <div id="realCardHost" class="real-card-host"></div>
+          <div class="plan-stage" style="width:${dimensions.width}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
+            ${
+              dashboardUrl
+                ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="Oficialni nahled dashboardu"></iframe>`
+                : `<div id="realCardHost" class="real-card-host"></div>`
+            }
             <div class="fallback-preview">
               ${
                 image
@@ -1429,6 +1449,7 @@ const styles = `
     position: relative;
     flex: 0 0 auto;
     max-width: none;
+    height: var(--preview-height, auto);
     min-height: 220px;
     margin: 0 auto;
     border: 1px solid var(--vde-line);
@@ -1448,6 +1469,18 @@ const styles = `
   .real-card-host {
     position: relative;
     z-index: 1;
+    pointer-events: none;
+  }
+
+  .dashboard-frame {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    border: 0;
+    background: var(--vde-panel);
     pointer-events: none;
   }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.12
+
+- Use the real Lovelace view URL for UI dashboard previews so viewport-dependent CSS, `vw` units and media queries behave like the official dashboard.
+- Keep the previous card renderer as fallback for raw YAML files and cases without a Lovelace preview URL.
+
 ## 0.2.11
 
 - Allow small phone and tablet previews to upscale visually in the editor while keeping their selected logical viewport size.

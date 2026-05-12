@@ -317,6 +317,7 @@ async def _load_lovelace_dashboard(
     dashboard, title = _find_lovelace_dashboard(hass, dashboard_path)
     data = await dashboard.async_load(False)
     cards = _find_picture_cards(data)
+    _attach_lovelace_preview_urls(cards, dashboard_path, data)
 
     return {
         "path": dashboard_path,
@@ -511,6 +512,47 @@ def _node_at_path(data: Any, path: list[str | int]) -> Any:
     for part in path:
         node = node[part]
     return node
+
+
+def _attach_lovelace_preview_urls(
+    cards: list[dict[str, Any]], dashboard_path: str, data: Any
+) -> None:
+    """Attach same-origin Lovelace URLs for exact viewport previews."""
+    for card in cards:
+        preview_url = _lovelace_preview_url(dashboard_path, data, card.get("path", []))
+        if preview_url:
+            card["preview_url"] = preview_url
+
+
+def _lovelace_preview_url(
+    dashboard_path: str, data: Any, card_path: list[str | int]
+) -> str:
+    """Build a dashboard URL for the view containing a picture-elements card."""
+    token = dashboard_path.removeprefix(LOVELACE_PATH_PREFIX).strip("/")
+    base = "/lovelace" if token in {"", "default", "lovelace"} else f"/{token}"
+    view_path = _view_path_for_card(data, card_path)
+    return f"{base}/{view_path}" if view_path else base
+
+
+def _view_path_for_card(data: Any, card_path: list[str | int]) -> str:
+    """Infer the Lovelace view path from a card path."""
+    if not (
+        isinstance(data, dict)
+        and isinstance(data.get("views"), list)
+        and len(card_path) >= 2
+        and card_path[0] == "views"
+        and isinstance(card_path[1], int)
+    ):
+        return ""
+
+    view_index = card_path[1]
+    try:
+        view = data["views"][view_index]
+    except (IndexError, TypeError):
+        return ""
+    if not isinstance(view, dict):
+        return ""
+    return str(view.get("path") or view_index).strip("/")
 
 
 def _find_picture_cards(data: Any) -> list[dict[str, Any]]:
