@@ -87,7 +87,6 @@ async def _async_setup_runtime(hass: HomeAssistant) -> None:
             sidebar_icon=PANEL_ICON,
             require_admin=True,
             embed_iframe=False,
-            config={"domain": DOMAIN},
         )
         domain_data["panel_registered"] = True
 
@@ -100,43 +99,27 @@ def _register_websocket_commands(hass: HomeAssistant, websocket_api: Any) -> Non
     """Register websocket commands without importing websocket API at module load."""
     import voluptuous as vol
 
-    list_files_schema = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
-        {vol.Required("type"): WS_LIST_FILES}
-    )
-    load_file_schema = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
-        {
-            vol.Required("type"): WS_LOAD_FILE,
-            vol.Required("path"): str,
-        }
-    )
-    save_element_schema = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
-        {
-            vol.Required("type"): WS_SAVE_ELEMENT,
-            vol.Required("path"): str,
-            vol.Required("element_path"): [vol.Any(str, int)],
-            vol.Optional("element"): object,
-            vol.Optional("fragment"): str,
-        }
-    )
+    list_files_schema = {vol.Required("type"): WS_LIST_FILES}
+    load_file_schema = {
+        vol.Required("type"): WS_LOAD_FILE,
+        vol.Required("path"): str,
+    }
+    save_element_schema = {
+        vol.Required("type"): WS_SAVE_ELEMENT,
+        vol.Required("path"): str,
+        vol.Required("element_path"): [vol.Any(str, int)],
+        vol.Optional("element"): object,
+        vol.Optional("fragment"): str,
+    }
 
-    websocket_api.async_register_command(
-        hass,
-        websocket_api.websocket_command(list_files_schema)(
-            websocket_api.async_response(_ws_list_files)
-        ),
-    )
-    websocket_api.async_register_command(
-        hass,
-        websocket_api.websocket_command(load_file_schema)(
-            websocket_api.async_response(_ws_load_file)
-        ),
-    )
-    websocket_api.async_register_command(
-        hass,
-        websocket_api.websocket_command(save_element_schema)(
-            websocket_api.async_response(_ws_save_element)
-        ),
-    )
+    for schema, handler in (
+        (list_files_schema, _ws_list_files),
+        (load_file_schema, _ws_load_file),
+        (save_element_schema, _ws_save_element),
+    ):
+        decorated = websocket_api.async_response(handler)
+        decorated = websocket_api.websocket_command(schema)(decorated)
+        websocket_api.async_register_command(hass, decorated)
 
 
 async def _ws_list_files(
