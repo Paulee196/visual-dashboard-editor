@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 from datetime import datetime
 import io
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -18,6 +20,7 @@ from .const import (
     PANEL_TITLE,
     PANEL_URL,
     STATIC_URL,
+    LOVELACE_PATH_PREFIX,
     WS_LIST_FILES,
     WS_LOAD_FILE,
     WS_SAVE_ELEMENT,
@@ -129,7 +132,11 @@ async def _ws_list_files(
 ) -> None:
     """List candidate YAML dashboard files."""
     try:
-        result = await hass.async_add_executor_job(_list_yaml_files, hass.config.path())
+        yaml_result = await hass.async_add_executor_job(
+            _list_yaml_files, hass.config.path()
+        )
+        dashboards = await _list_lovelace_dashboards(hass)
+        result = {"files": [*dashboards, *yaml_result["files"]]}
     except Exception as err:  # noqa: BLE001 - user-facing websocket error
         _LOGGER.exception("Failed to list YAML files")
         connection.send_error(msg["id"], "list_failed", str(err))
@@ -145,9 +152,12 @@ async def _ws_load_file(
 ) -> None:
     """Load a YAML dashboard file."""
     try:
-        result = await hass.async_add_executor_job(
-            _load_dashboard_file, hass.config.path(), msg["path"]
-        )
+        if msg["path"].startswith(LOVELACE_PATH_PREFIX):
+            result = await _load_lovelace_dashboard(hass, msg["path"])
+        else:
+            result = await hass.async_add_executor_job(
+                _load_dashboard_file, hass.config.path(), msg["path"]
+            )
     except Exception as err:  # noqa: BLE001 - user-facing websocket error
         _LOGGER.exception("Failed to load dashboard file")
         connection.send_error(msg["id"], "load_failed", str(err))
@@ -163,14 +173,23 @@ async def _ws_save_element(
 ) -> None:
     """Save a single element back into a YAML dashboard file."""
     try:
-        result = await hass.async_add_executor_job(
-            _save_element,
-            hass.config.path(),
-            msg["path"],
-            msg["element_path"],
-            msg.get("element"),
-            msg.get("fragment"),
-        )
+        if msg["path"].startswith(LOVELACE_PATH_PREFIX):
+            result = await _save_lovelace_element(
+                hass,
+                msg["path"],
+                msg["element_path"],
+                msg.get("element"),
+                msg.get("fragment"),
+            )
+        else:
+            result = await hass.async_add_executor_job(
+                _save_element,
+                hass.config.path(),
+                msg["path"],
+                msg["element_path"],
+                msg.get("element"),
+                msg.get("fragment"),
+            )
     except Exception as err:  # noqa: BLE001 - user-facing websocket error
         _LOGGER.exception("Failed to save dashboard element")
         connection.send_error(msg["id"], "save_failed", str(err))
@@ -216,6 +235,8 @@ def _list_yaml_files(config_dir: str) -> dict[str, Any]:
         files.append(
             {
                 "path": rel.as_posix(),
+                "source": "yaml",
+                "label": rel.as_posix(),
                 "kind": kind,
                 "size": stat.st_size,
                 "modified": int(stat.st_mtime),
@@ -225,6 +246,52 @@ def _list_yaml_files(config_dir: str) -> dict[str, Any]:
 
     files.sort(key=lambda item: (-item["score"], item["path"]))
     return {"files": files[:200]}
+
+
+async def _list_lovelace_dashboards(hass: HomeAssistant) -> list[dict[str, Any]]:
+    """Return UI-managed Lovelace dashboards from Home Assistant runtime."""
+    try:
+        from homeassistant.components.lovelace.const import LOVELACE_DATA, MODE_STORAGE
+    except ImportError:
+        return []
+
+    lovelace_data = hass.data.get(LOVELACE_DATA)
+    if lovelace_data is None:
+        return []
+
+    dashboards: list[dict[str, Any]] = []
+    for url_path, dashboard in lovelace_data.dashboards.items():
+        if getattr(dashboard, "mode", None) != MODE_STORAGE:
+            continue
+
+        config = getattr(dashboard, "config", None) or {}
+        title = config.get("title") or ("Overview" if url_path is None else str(url_path))
+        token = "default" if url_path is None else str(url_path)
+
+        try:
+            loaded = await dashboard.async_load(False)
+            cards = _find_picture_cards(loaded)
+            score = 200 + (100 if cards else 0)
+            card_count = len(cards)
+        except Exception:  # noqa: BLE001 - auto-generated or unavailable dashboard
+            score = 190
+            card_count = 0
+
+        dashboards.append(
+            {
+                "path": f"{LOVELACE_PATH_PREFIX}{token}",
+                "source": "lovelace",
+                "label": f"{title} (UI dashboard)",
+                "kind": "storage-dashboard",
+                "size": 0,
+                "modified": 0,
+                "score": score,
+                "cards": card_count,
+            }
+        )
+
+    dashboards.sort(key=lambda item: (-item["score"], item["label"]))
+    return dashboards
 
 
 def _load_dashboard_file(config_dir: str, relative_path: str) -> dict[str, Any]:
@@ -237,6 +304,23 @@ def _load_dashboard_file(config_dir: str, relative_path: str) -> dict[str, Any]:
     return {
         "path": path.relative_to(Path(config_dir).resolve()).as_posix(),
         "yaml": text,
+        "cards": cards,
+    }
+
+
+async def _load_lovelace_dashboard(
+    hass: HomeAssistant, dashboard_path: str
+) -> dict[str, Any]:
+    """Load a UI-managed Lovelace dashboard."""
+    dashboard, title = _find_lovelace_dashboard(hass, dashboard_path)
+    data = await dashboard.async_load(False)
+    cards = _find_picture_cards(data)
+
+    return {
+        "path": dashboard_path,
+        "source": "lovelace",
+        "title": title,
+        "yaml": _dump_yaml(data),
         "cards": cards,
     }
 
@@ -270,6 +354,70 @@ def _save_element(
     return loaded
 
 
+async def _save_lovelace_element(
+    hass: HomeAssistant,
+    dashboard_path: str,
+    element_path: list[str | int],
+    element: Any | None,
+    fragment: str | None,
+) -> dict[str, Any]:
+    """Replace one element in a UI-managed Lovelace dashboard."""
+    if element is None and fragment is None:
+        raise ValueError("No element or YAML fragment was provided")
+
+    dashboard, title = _find_lovelace_dashboard(hass, dashboard_path)
+    original = copy.deepcopy(await dashboard.async_load(False))
+    updated = copy.deepcopy(original)
+    replacement = _plain(_load_yaml(fragment)) if fragment is not None else element
+
+    parent = _node_at_path(updated, element_path[:-1])
+    key = element_path[-1]
+    parent[key] = replacement
+
+    backup_path = await hass.async_add_executor_job(
+        _write_storage_backup,
+        Path(hass.config.path()).resolve(),
+        dashboard_path,
+        title,
+        original,
+    )
+    await dashboard.async_save(updated)
+
+    loaded = await _load_lovelace_dashboard(hass, dashboard_path)
+    loaded["backup_path"] = backup_path.relative_to(
+        Path(hass.config.path()).resolve()
+    ).as_posix()
+    return loaded
+
+
+def _find_lovelace_dashboard(
+    hass: HomeAssistant, dashboard_path: str
+) -> tuple[Any, str]:
+    """Find a Lovelace dashboard by editor path."""
+    try:
+        from homeassistant.components.lovelace.const import LOVELACE_DATA, MODE_STORAGE
+    except ImportError as err:
+        raise ValueError("Lovelace is not available") from err
+
+    lovelace_data = hass.data.get(LOVELACE_DATA)
+    if lovelace_data is None:
+        raise ValueError("Lovelace data is not loaded yet")
+
+    token = dashboard_path.removeprefix(LOVELACE_PATH_PREFIX)
+    url_path = None if token == "default" else token
+    dashboard = lovelace_data.dashboards.get(url_path)
+    if dashboard is None and token == "lovelace":
+        dashboard = lovelace_data.dashboards.get(None)
+    if dashboard is None:
+        raise ValueError(f"Dashboard {token} was not found")
+    if getattr(dashboard, "mode", None) != MODE_STORAGE:
+        raise ValueError("Only UI-managed storage dashboards can be saved here")
+
+    config = getattr(dashboard, "config", None) or {}
+    title = config.get("title") or ("Overview" if url_path is None else str(url_path))
+    return dashboard, title
+
+
 def _safe_yaml_path(config_dir: str, relative_path: str) -> Path:
     """Resolve a user-provided relative YAML path inside the HA config dir."""
     root = Path(config_dir).resolve()
@@ -295,6 +443,23 @@ def _write_backup(root: Path, source_path: Path, content: str) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup_path = backup_dir / f"{rel_name}.{stamp}.bak.yaml"
     backup_path.write_text(content, encoding="utf-8")
+    return backup_path
+
+
+def _write_storage_backup(
+    root: Path, dashboard_path: str, title: str, content: dict[str, Any]
+) -> Path:
+    """Write a timestamped backup before modifying a storage dashboard."""
+    backup_dir = root / ".visual_dashboard_editor_backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    token = dashboard_path.removeprefix(LOVELACE_PATH_PREFIX).replace("/", "_")
+    safe_title = "".join(ch if ch.isalnum() else "_" for ch in title).strip("_")
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_path = backup_dir / f"lovelace_{token}_{safe_title}.{stamp}.bak.json"
+    backup_path.write_text(
+        json.dumps(content, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     return backup_path
 
 

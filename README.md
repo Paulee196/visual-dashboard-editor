@@ -2,7 +2,7 @@
 
 Prvni prototyp vizualniho editoru pro YAML dashboardy v Home Assistantu. Cil je jednoduchy: misto hledani v tisicich radku YAMLu kliknes na prvek ve floorplanu/3D planu a upravis jeho zakladni parametry v UI.
 
-Aktualni MVP je zamerene na karty typu `picture-elements`, protoze prave ty se casto pouzivaji pro 3D floorplan dashboardy.
+Aktualni MVP je zamerene na karty typu `picture-elements`, protoze prave ty se casto pouzivaji pro 3D floorplan dashboardy. Umi nacitat jak UI/storage dashboardy vytvorene v Home Assistantu, tak klasicke YAML dashboard soubory.
 
 ## Rychla instalace
 
@@ -15,6 +15,7 @@ Po instalaci a restartu muzes integraci rovnou pridat tady:
 ## Co to umi ted
 
 - prida do Home Assistantu sidebar panel `Visual Dashboard Editor`
+- najde UI/storage dashboardy v Home Assistantu
 - najde YAML soubory v HA config slozce
 - vyhleda v nich `picture-elements` karty
 - vykresli zjednodusene preview s pozicemi prvku
@@ -49,7 +50,7 @@ visual_dashboard_editor:
 ## Jak to pouzit
 
 1. Otevri sidebar panel `Visual Dashboard Editor`.
-2. Vyber YAML soubor dashboardu.
+2. Vyber UI dashboard nebo YAML soubor dashboardu.
 3. Klikni `Nacist`.
 4. Vyber `picture-elements` kartu, pokud jich je v souboru vic.
 5. Klikni na prvek ve floorplanu.
@@ -58,9 +59,9 @@ visual_dashboard_editor:
 
 ## Dulezite limity MVP
 
-- Podporuje jen YAML soubory v HA config adresari, ne storage dashboardy ulozene jen v `.storage`.
+- Storage dashboardy se ukladaji pres Home Assistant Lovelace runtime. Backup se uklada jako JSON.
 - Preview je zjednodusene. Neni to plny Home Assistant renderer, takze custom card vnorene uvnitr prvku se zatim nevykresli dokonale.
-- Ukladani se snazi zachovat zbytek souboru pres `ruamel.yaml`, ale upraveny element muze ztratit cast rucniho formatovani nebo komentaru primo uvnitr daneho elementu.
+- Ukladani YAML souboru se snazi zachovat zbytek souboru pres `ruamel.yaml`, ale upraveny element muze ztratit cast rucniho formatovani nebo komentaru primo uvnitr daneho elementu.
 - Zatim nehleda prvek kliknutim v normalnim dashboardu. Je to samostatny editor panel. Floating tlacitko do bezneho dashboardu je dalsi krok.
 
 ## Proc takhle

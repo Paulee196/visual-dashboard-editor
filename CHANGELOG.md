@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+- Add support for UI-managed Lovelace storage dashboards.
+- Show storage dashboards before raw YAML files in the picker.
+- Save storage dashboard element edits through the Home Assistant Lovelace runtime and create JSON backups.
+
 ## 0.1.3
 
 - Fix WebSocket command schemas for Home Assistant versions that expect raw dict schemas.

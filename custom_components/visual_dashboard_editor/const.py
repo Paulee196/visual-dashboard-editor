@@ -12,3 +12,5 @@ STATIC_URL = f"/{DOMAIN}_static"
 WS_LIST_FILES = f"{DOMAIN}/list_files"
 WS_LOAD_FILE = f"{DOMAIN}/load_file"
 WS_SAVE_ELEMENT = f"{DOMAIN}/save_element"
+
+LOVELACE_PATH_PREFIX = "lovelace://"

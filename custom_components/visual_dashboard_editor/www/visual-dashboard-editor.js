@@ -50,8 +50,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       const result = await this.callWS({ type: `${DOMAIN}/list_files` });
       this.state.files = result.files || [];
       this.state.status = this.state.files.length
-        ? "Vyber YAML soubor a nacti preview."
-        : "Nenasel jsem zadny vhodny YAML soubor v HA configu.";
+        ? "Vyber UI dashboard nebo YAML soubor a nacti preview."
+        : "Nenasel jsem zadny UI dashboard ani vhodny YAML soubor.";
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -79,7 +79,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.dirty = false;
       this.state.status = this.state.cards.length
         ? `Nacteno: ${this.state.cards.length} picture-elements karta/karet.`
-        : "Soubor je nacteny, ale nenasel jsem picture-elements kartu.";
+        : "Dashboard je nacteny, ale nenasel jsem picture-elements kartu.";
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -276,7 +276,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   renderPreview() {
     const card = this.currentCard();
     if (!card) {
-      return `<div class="empty-state">Vyber YAML soubor s picture-elements kartou.</div>`;
+      return `<div class="empty-state">Vyber UI dashboard nebo YAML soubor s picture-elements kartou.</div>`;
     }
     const image = this.imageUrl(card.image);
     const elements = card.elements
@@ -411,24 +411,34 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return `
       <aside class="files">
         <div class="files-head">
-          <h2>Dashboard YAML</h2>
+          <h2>Dashboardy</h2>
           <button id="refreshFiles" title="Obnovit seznam">Obnovit</button>
         </div>
         <select id="fileSelect" size="12">
-          <option value="">Vyber soubor...</option>
+          <option value="">Vyber dashboard...</option>
           ${this.state.files
             .map(
-              (file) =>
+              (file) => {
+                const label = file.label || file.path;
+                const suffix =
+                  file.source === "lovelace"
+                    ? file.cards
+                      ? ` · ${file.cards} karet`
+                      : " · UI"
+                    : " · YAML";
+                return (
                 `<option value="${this.escape(file.path)}" ${
                   file.path === this.state.selectedFile ? "selected" : ""
                 }>
-                  ${this.escape(file.path)}
+                  ${this.escape(label + suffix)}
                 </option>`
+                );
+              }
             )
             .join("")}
         </select>
         <button id="loadFile" class="primary" ${!this.state.selectedFile ? "disabled" : ""}>Nacist</button>
-        <p class="muted">Prvni MVP edituje YAML soubory v HA configu a hleda karty typu picture-elements.</p>
+        <p class="muted">Editor umi UI/storage dashboardy a YAML soubory v HA configu. Hleda karty typu picture-elements.</p>
       </aside>
     `;
   }
