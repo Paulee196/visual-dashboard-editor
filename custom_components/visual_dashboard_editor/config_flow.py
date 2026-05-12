@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
 
 import voluptuous as vol
 
@@ -15,9 +14,7 @@ class VisualDashboardEditorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(
-        self, user_input: dict | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input=None):
         """Create the single editor entry."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()

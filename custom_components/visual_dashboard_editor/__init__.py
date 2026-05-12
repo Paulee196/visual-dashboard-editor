@@ -8,22 +8,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import voluptuous as vol
-
-from homeassistant.components import panel_custom, websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-
-try:
-    from homeassistant.components.http import StaticPathConfig
-except ImportError:  # pragma: no cover - compatibility for older HA builds
-    StaticPathConfig = None
-
-try:
-    from ruamel.yaml import YAML
-except ImportError:  # pragma: no cover - fallback is only used when HA lacks ruamel
-    YAML = None
-    import yaml as pyyaml
 
 from .const import (
     DOMAIN,
@@ -52,26 +38,6 @@ EXCLUDED_DIRS = {
 }
 MAX_FILE_BYTES = 5 * 1024 * 1024
 
-LIST_FILES_SCHEMA = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
-    {vol.Required("type"): WS_LIST_FILES}
-)
-LOAD_FILE_SCHEMA = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
-    {
-        vol.Required("type"): WS_LOAD_FILE,
-        vol.Required("path"): str,
-    }
-)
-SAVE_ELEMENT_SCHEMA = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
-    {
-        vol.Required("type"): WS_SAVE_ELEMENT,
-        vol.Required("path"): str,
-        vol.Required("element_path"): [vol.Any(str, int)],
-        vol.Optional("element"): object,
-        vol.Optional("fragment"): str,
-    }
-)
-
-
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up from YAML."""
     if DOMAIN in config:
@@ -92,10 +58,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_setup_runtime(hass: HomeAssistant) -> None:
     """Register the frontend panel and websocket commands once."""
+    from homeassistant.components import panel_custom, websocket_api
+
     domain_data = hass.data.setdefault(DOMAIN, {})
 
     if not domain_data.get("static_registered"):
         panel_dir = Path(__file__).parent / "www"
+        try:
+            from homeassistant.components.http import StaticPathConfig
+        except ImportError:  # pragma: no cover - compatibility for older HA builds
+            StaticPathConfig = None
+
         if StaticPathConfig is not None:
             await hass.http.async_register_static_paths(
                 [StaticPathConfig(STATIC_URL, str(panel_dir), cache_headers=True)]
@@ -119,17 +92,56 @@ async def _async_setup_runtime(hass: HomeAssistant) -> None:
         domain_data["panel_registered"] = True
 
     if not domain_data.get("websocket_registered"):
-        websocket_api.async_register_command(hass, _ws_list_files)
-        websocket_api.async_register_command(hass, _ws_load_file)
-        websocket_api.async_register_command(hass, _ws_save_element)
+        _register_websocket_commands(hass, websocket_api)
         domain_data["websocket_registered"] = True
 
 
-@websocket_api.websocket_command(LIST_FILES_SCHEMA)
-@websocket_api.async_response
+def _register_websocket_commands(hass: HomeAssistant, websocket_api: Any) -> None:
+    """Register websocket commands without importing websocket API at module load."""
+    import voluptuous as vol
+
+    list_files_schema = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
+        {vol.Required("type"): WS_LIST_FILES}
+    )
+    load_file_schema = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
+        {
+            vol.Required("type"): WS_LOAD_FILE,
+            vol.Required("path"): str,
+        }
+    )
+    save_element_schema = websocket_api.BASE_COMMAND_MESSAGE_SCHEMA.extend(
+        {
+            vol.Required("type"): WS_SAVE_ELEMENT,
+            vol.Required("path"): str,
+            vol.Required("element_path"): [vol.Any(str, int)],
+            vol.Optional("element"): object,
+            vol.Optional("fragment"): str,
+        }
+    )
+
+    websocket_api.async_register_command(
+        hass,
+        websocket_api.websocket_command(list_files_schema)(
+            websocket_api.async_response(_ws_list_files)
+        ),
+    )
+    websocket_api.async_register_command(
+        hass,
+        websocket_api.websocket_command(load_file_schema)(
+            websocket_api.async_response(_ws_load_file)
+        ),
+    )
+    websocket_api.async_register_command(
+        hass,
+        websocket_api.websocket_command(save_element_schema)(
+            websocket_api.async_response(_ws_save_element)
+        ),
+    )
+
+
 async def _ws_list_files(
     hass: HomeAssistant,
-    connection: websocket_api.ActiveConnection,
+    connection: Any,
     msg: dict[str, Any],
 ) -> None:
     """List candidate YAML dashboard files."""
@@ -143,11 +155,9 @@ async def _ws_list_files(
     connection.send_result(msg["id"], result)
 
 
-@websocket_api.websocket_command(LOAD_FILE_SCHEMA)
-@websocket_api.async_response
 async def _ws_load_file(
     hass: HomeAssistant,
-    connection: websocket_api.ActiveConnection,
+    connection: Any,
     msg: dict[str, Any],
 ) -> None:
     """Load a YAML dashboard file."""
@@ -163,11 +173,9 @@ async def _ws_load_file(
     connection.send_result(msg["id"], result)
 
 
-@websocket_api.websocket_command(SAVE_ELEMENT_SCHEMA)
-@websocket_api.async_response
 async def _ws_save_element(
     hass: HomeAssistant,
-    connection: websocket_api.ActiveConnection,
+    connection: Any,
     msg: dict[str, Any],
 ) -> None:
     """Save a single element back into a YAML dashboard file."""
@@ -309,8 +317,11 @@ def _write_backup(root: Path, source_path: Path, content: str) -> Path:
 
 def _new_yaml() -> Any:
     """Create a ruamel YAML instance when available."""
-    if YAML is None:
+    try:
+        from ruamel.yaml import YAML
+    except ImportError:
         return None
+
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.indent(mapping=2, sequence=4, offset=2)
@@ -325,6 +336,8 @@ def _load_yaml(text: str | None) -> Any:
     if yaml is not None:
         data = yaml.load(text)
     else:
+        import yaml as pyyaml
+
         data = pyyaml.safe_load(text)
     return data if data is not None else {}
 
@@ -336,6 +349,8 @@ def _dump_yaml(data: Any) -> str:
     if yaml is not None:
         yaml.dump(data, stream)
     else:
+        import yaml as pyyaml
+
         stream.write(pyyaml.safe_dump(data, sort_keys=False, allow_unicode=True))
     return stream.getvalue()
 
