@@ -1,0 +1,35 @@
+title: Demo floorplan
+views:
+  - title: Home
+    path: home
+    panel: true
+    cards:
+      - type: picture-elements
+        title: Demo 3D plan
+        image: /local/floorplan/demo.png
+        elements:
+          - type: state-icon
+            entity: light.kitchen
+            icon: mdi:lightbulb
+            tap_action:
+              action: toggle
+            style:
+              left: 42%
+              top: 56%
+              width: 5%
+          - type: image
+            entity: light.living_room
+            image: /local/floorplan/living-room-light.png
+            tap_action:
+              action: toggle
+            style:
+              left: 62%
+              top: 38%
+              width: 16%
+              opacity: 0.85
+          - type: state-label
+            entity: sensor.outdoor_temperature
+            style:
+              left: 78%
+              top: 84%
+              transform: translate(-50%, -50%) scale(1.2)
