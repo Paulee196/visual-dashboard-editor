@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Improve the preview for this 3Dplan style: data images, transparent hotspots, icon controls, widgets and element picking.
+
 ## 0.2.1
 
 - Expose nested picture-elements children, especially elements inside `conditional` wrappers.

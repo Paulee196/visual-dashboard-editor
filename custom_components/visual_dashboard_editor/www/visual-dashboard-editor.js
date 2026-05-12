@@ -241,7 +241,13 @@ class VisualDashboardEditorPanel extends HTMLElement {
   imageUrl(value) {
     const url = String(value || "");
     if (!url) return "";
-    if (url.startsWith("http") || url.startsWith("/") || url.startsWith("media-source://")) {
+    if (
+      url.startsWith("http") ||
+      url.startsWith("/") ||
+      url.startsWith("data:") ||
+      url.startsWith("blob:") ||
+      url.startsWith("media-source://")
+    ) {
       return url;
     }
     return `/${url.replace(/^\/+/, "")}`;
@@ -254,10 +260,64 @@ class VisualDashboardEditorPanel extends HTMLElement {
       config.title ||
       config.entity ||
       config.icon ||
+      config.card_type ||
       config.type ||
       element.label ||
       "element"
     );
+  }
+
+  hasPosition(style) {
+    return Boolean(style && (style.left || style.top));
+  }
+
+  isTransparentCard(config) {
+    const cardStyles = config.styles && config.styles.card;
+    const styleText = Array.isArray(cardStyles)
+      ? cardStyles.join(" ").toLowerCase()
+      : String(cardStyles || "").toLowerCase();
+    return (
+      config.type === "custom:button-card" &&
+      config.show_name === false &&
+      config.show_icon === false &&
+      (styleText.includes("transparent") || styleText.includes("rgba(0,0,0,0)"))
+    );
+  }
+
+  elementKind(config) {
+    const type = config.type || "";
+    const cardType = config.card_type || "";
+    if (type === "image") return "image";
+    if (this.isTransparentCard(config)) return "hotspot";
+    if (cardType.includes("calendar")) return "calendar";
+    if (cardType === "horizontal-stack") return "stack";
+    if (config.custom_fields && (config.custom_fields.main || config.custom_fields.body)) {
+      return "widget";
+    }
+    if (config.icon || cardType === "custom:button-card" || type === "custom:hui-element") {
+      return "icon";
+    }
+    return "label";
+  }
+
+  elementClasses(element, style) {
+    const config = element.config || {};
+    const kind = this.elementKind(config);
+    const classes = ["plan-element", `element-${kind}`];
+    if (this.samePath(element.path, this.state.selectedElementPath)) classes.push("selected");
+    if (style.width || style.height) classes.push("has-explicit-size");
+    if (element.parent) classes.push("nested-element");
+    return classes.join(" ");
+  }
+
+  fallbackIcon(config) {
+    const cardType = config.card_type || "";
+    if (cardType.includes("calendar")) return "mdi:calendar";
+    if (cardType === "horizontal-stack") return "mdi:account-group";
+    if (config.entity && config.entity.startsWith("sensor.")) return "mdi:chart-line";
+    if (config.entity && config.entity.startsWith("media_player.")) return "mdi:music";
+    if (config.entity && config.entity.startsWith("light.")) return "mdi:lightbulb-outline";
+    return "mdi:vector-point";
   }
 
   renderElementContent(element) {
@@ -266,11 +326,23 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (config.type === "image" && image) {
       return `<img class="element-image" src="${this.escape(this.imageUrl(image))}" alt="">`;
     }
-    const icon = config.icon || (config.type === "state-icon" ? "mdi:circle-medium" : "");
-    const iconHtml = icon
-      ? `<ha-icon class="ha-like-icon" icon="${this.escape(icon)}"></ha-icon>`
-      : "";
-    return `${iconHtml}<span>${this.escape(this.shortLabel(element))}</span>`;
+    const kind = this.elementKind(config);
+    const icon = config.icon || (config.type === "state-icon" ? "mdi:circle-medium" : this.fallbackIcon(config));
+    const label = this.shortLabel(element);
+
+    if (kind === "hotspot") {
+      return `<span class="hotspot-label">${this.escape(label)}</span>`;
+    }
+    if (kind === "icon") {
+      return `<ha-icon class="ha-like-icon" icon="${this.escape(icon)}"></ha-icon>`;
+    }
+    if (kind === "calendar" || kind === "stack") {
+      return `<ha-icon class="ha-like-icon" icon="${this.escape(icon)}"></ha-icon><span>${this.escape(label)}</span>`;
+    }
+    if (kind === "widget") {
+      return `<span class="widget-label">${this.escape(label)}</span>`;
+    }
+    return `<ha-icon class="ha-like-icon" icon="${this.escape(icon)}"></ha-icon><span>${this.escape(label)}</span>`;
   }
 
   renderPreview() {
@@ -279,10 +351,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
       return `<div class="empty-state">Vyber UI dashboard nebo YAML soubor s picture-elements kartou.</div>`;
     }
     const image = this.imageUrl(card.image);
+    const visibleCount = card.elements.filter((element) =>
+      this.hasPosition((element.config || {}).style || {})
+    ).length;
     const elements = card.elements
       .map((element, index) => {
         const style = element.config.style || {};
-        const isSelected = this.samePath(element.path, this.state.selectedElementPath);
+        if (!this.hasPosition(style)) {
+          return "";
+        }
         const width = style.width ? `width:${this.cssValue(style.width)};` : "";
         const height = style.height ? `height:${this.cssValue(style.height)};` : "";
         const opacity = style.opacity ? `opacity:${this.cssValue(style.opacity)};` : "";
@@ -291,9 +368,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
           : "transform:translate(-50%, -50%);";
         const left = this.cssValue(style.left, "50%");
         const top = this.cssValue(style.top, "50%");
+        const classes = this.elementClasses(element, style);
         return `
           <button
-            class="plan-element ${isSelected ? "selected" : ""}"
+            class="${classes}"
             style="left:${left};top:${top};${width}${height}${opacity}${transform}"
             data-card-index="${this.state.cardIndex}"
             data-element-index="${index}"
@@ -317,7 +395,20 @@ class VisualDashboardEditorPanel extends HTMLElement {
             )
             .join("")}
         </select>
-        <span>${card.elements.length} prvku</span>
+        <select id="elementSelect">
+          <option value="">Vyber prvek...</option>
+          ${card.elements
+            .map(
+              (element, index) =>
+                `<option value="${index}" ${
+                  this.samePath(element.path, this.state.selectedElementPath) ? "selected" : ""
+                }>
+                  ${this.escape(element.label)}
+                </option>`
+            )
+            .join("")}
+        </select>
+        <span>${visibleCount}/${card.elements.length} viditelnych prvku</span>
       </div>
       <div class="plan-stage">
         ${
@@ -489,6 +580,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.advancedText = "";
       this.state.advancedDirty = false;
       this.render();
+    });
+
+    const elementSelect = this.shadowRoot.querySelector("#elementSelect");
+    elementSelect?.addEventListener("change", (event) => {
+      const elementIndex = Number.parseInt(event.target.value, 10);
+      if (Number.isFinite(elementIndex)) {
+        this.selectElement(this.state.cardIndex, elementIndex);
+      }
     });
 
     this.shadowRoot.querySelectorAll(".plan-element").forEach((node) => {
@@ -767,7 +866,6 @@ const styles = `
     gap: 4px;
     min-width: 30px;
     min-height: 30px;
-    max-width: 220px;
     padding: 4px 6px;
     border: 1px solid rgba(11, 107, 203, 0.5);
     background: rgba(255, 255, 255, 0.75);
@@ -777,6 +875,10 @@ const styles = `
     touch-action: none;
   }
 
+  .plan-element.has-explicit-size {
+    padding: 0;
+  }
+
   .plan-element.selected {
     border: 2px solid #ffb000;
     box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.28);
@@ -784,11 +886,81 @@ const styles = `
   }
 
   .plan-element span {
-    max-width: 160px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
+  }
+
+  .plan-element.element-image {
+    border: 1px solid rgba(11, 107, 203, 0.18);
+    background: transparent;
+    box-shadow: none;
+    color: transparent;
+  }
+
+  .plan-element.element-image.selected {
+    border-color: #ffb000;
+  }
+
+  .element-hotspot {
+    background: rgba(0, 146, 255, 0.08);
+    border: 1px dashed rgba(0, 190, 255, 0.9);
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(0, 70, 120, 0.22);
+  }
+
+  .hotspot-label {
+    align-self: flex-start;
+    justify-self: flex-start;
+    max-width: calc(100% - 8px);
+    margin: 4px;
+    border-radius: 4px;
+    padding: 2px 5px;
+    background: rgba(0, 0, 0, 0.55);
+    color: white;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .element-icon {
+    width: auto;
+    height: auto;
+    min-width: 38px;
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    background: rgba(15, 15, 15, 0.78);
+    color: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .element-calendar,
+  .element-stack,
+  .element-widget {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    background: rgba(8, 18, 26, 0.78);
+    color: white;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+    padding: 6px 9px;
+  }
+
+  .element-widget.has-explicit-size {
+    padding: 6px 9px;
+  }
+
+  .widget-label {
+    font-weight: 700;
+  }
+
+  .nested-element::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(255, 176, 0, 0.18);
+    pointer-events: none;
   }
 
   .ha-like-icon {
@@ -797,7 +969,7 @@ const styles = `
     flex: 0 0 auto;
   }
 
-  .element-image {
+  img.element-image {
     width: 100%;
     height: 100%;
     min-width: 28px;

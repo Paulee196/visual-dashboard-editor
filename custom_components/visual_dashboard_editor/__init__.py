@@ -596,6 +596,30 @@ def _line_number(node: Any) -> int | None:
 
 def _element_label(element: dict[str, Any], index: int) -> str:
     """Build a compact label for an element."""
+    if element.get("type") == "conditional":
+        conditions = element.get("conditions")
+        if isinstance(conditions, list) and conditions:
+            first = conditions[0]
+            if isinstance(first, dict) and first.get("entity"):
+                state = first.get("state") or first.get("state_not")
+                suffix = f"={state}" if state else ""
+                return f"conditional {first['entity']}{suffix}"
+
+    card_type = element.get("card_type")
+    if card_type:
+        custom_fields = element.get("custom_fields")
+        if isinstance(custom_fields, dict):
+            title = custom_fields.get("title")
+            if isinstance(title, str) and "[[[" not in title and len(title) <= 48:
+                return title
+        entity = element.get("entity")
+        if entity:
+            return str(entity)
+        icon = element.get("icon")
+        if icon:
+            return str(icon)
+        return str(card_type)
+
     for key in ("name", "title", "entity", "icon", "image"):
         value = element.get(key)
         if value:
