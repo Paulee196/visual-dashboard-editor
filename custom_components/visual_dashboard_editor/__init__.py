@@ -546,6 +546,7 @@ def _describe_picture_card(
         "line": _line_number(card),
         "title": str(card.get("title") or f"Picture elements {card_index + 1}"),
         "image": card.get("image") or card.get("dark_mode_image") or "",
+        "config": _plain(card),
         "elements": elements,
     }
 

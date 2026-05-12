@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.7
+
+- Render the selected picture-elements card through Home Assistant's real card renderer, with a thin edit layer on top.
+- Keep the left element list focused on positioned elements only.
+- Add preview width presets for desktop, Full HD, tablet and mobile layout checks.
+
 ## 0.2.6
 
 - Remove the duplicate element picker above the preview.

@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.6";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v3";
+const UI_VERSION = "0.2.7";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v4";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -15,6 +15,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       advancedText: "",
       advancedDirty: false,
       elementFilter: "",
+      previewSize: "desktop",
       dirty: false,
       loading: false,
       status: "Vyber dashboard.",
@@ -24,6 +25,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   set hass(value) {
     this._hass = value;
+    if (this._realCard) {
+      this._realCard.hass = value;
+    }
   }
 
   get hass() {
@@ -204,16 +208,32 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const move = (moveEvent) => {
       const left = ((moveEvent.clientX - rect.left) / rect.width) * 100;
       const top = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+      const leftText = `${this.clamp(left, 0, 100).toFixed(1)}%`;
+      const topText = `${this.clamp(top, 0, 100).toFixed(1)}%`;
       element.config.style = element.config.style || {};
-      element.config.style.left = `${this.clamp(left, 0, 100).toFixed(1)}%`;
-      element.config.style.top = `${this.clamp(top, 0, 100).toFixed(1)}%`;
+      element.config.style.left = leftText;
+      element.config.style.top = topText;
       this.state.dirty = true;
       this.state.status = "Prvek posunut, jeste ulozit.";
-      this.render();
+
+      const node = this.shadowRoot.querySelector(
+        `.plan-element[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"]`
+      );
+      if (node) {
+        node.style.left = leftText;
+        node.style.top = topText;
+      }
+      const leftInput = this.shadowRoot.querySelector('[data-percent-field="style.left"]');
+      const topInput = this.shadowRoot.querySelector('[data-percent-field="style.top"]');
+      if (leftInput) leftInput.value = Number.parseFloat(leftText);
+      if (topInput) topInput.value = Number.parseFloat(topText);
+      const status = this.shadowRoot.querySelector(".topbar p");
+      if (status) status.textContent = this.state.status;
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      this.render();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -258,6 +278,19 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   shortLabel(element) {
     return this.displayLabel(element);
+  }
+
+  previewPresets() {
+    return {
+      desktop: { label: "Desktop 1280 px", width: 1280 },
+      wide: { label: "Full HD 1920 px", width: 1920 },
+      tablet: { label: "Tablet 768 px", width: 768 },
+      mobile: { label: "Mobil 390 px", width: 390 },
+    };
+  }
+
+  previewPreset() {
+    return this.previewPresets()[this.state.previewSize] || this.previewPresets().desktop;
   }
 
   displayLabel(element) {
@@ -457,6 +490,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const query = this.state.elementFilter.trim().toLowerCase();
     return card.elements
       .map((element, index) => ({ element, index }))
+      .filter(({ element }) => this.hasPosition((element.config || {}).style || {}))
       .filter(({ element }) => {
         if (!query) return true;
         const haystack = `${this.displayLabel(element)} ${element.label} ${this.elementSummary(element)}`.toLowerCase();
@@ -567,6 +601,50 @@ class VisualDashboardEditorPanel extends HTMLElement {
     `;
   }
 
+  cloneConfig(config) {
+    return JSON.parse(JSON.stringify(config || {}));
+  }
+
+  async mountRealCard() {
+    const host = this.shadowRoot.querySelector("#realCardHost");
+    const stage = this.shadowRoot.querySelector(".plan-stage");
+    const error = this.shadowRoot.querySelector("#previewRenderError");
+    const card = this.currentCard();
+    const cardIndex = this.state.cardIndex;
+    this._realCard = null;
+
+    if (!host || !stage || !card?.config || !this.hass) return;
+
+    try {
+      const config = this.cloneConfig(card.config);
+      let element;
+      if (window.loadCardHelpers) {
+        const helpers = await window.loadCardHelpers();
+        element = helpers.createCardElement(config);
+      } else {
+        element = document.createElement("hui-picture-elements-card");
+        element.setConfig(config);
+      }
+      if (!host.isConnected || this.state.cardIndex !== cardIndex) return;
+      element.hass = this.hass;
+      element.classList.add("real-card");
+      host.replaceChildren(element);
+      this._realCard = element;
+      stage.classList.add("real-ready");
+      stage.classList.remove("real-failed");
+      if (error) error.textContent = "";
+    } catch (err) {
+      host.replaceChildren();
+      stage.classList.remove("real-ready");
+      stage.classList.add("real-failed");
+      if (error) {
+        error.textContent = `Realne vykresleni se nepovedlo, pouzivam nouzovy nahled: ${
+          err?.message || err
+        }`;
+      }
+    }
+  }
+
   renderPreview() {
     const card = this.currentCard();
     if (!card) {
@@ -576,6 +654,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const visibleCount = card.elements.filter((element) =>
       this.hasPosition((element.config || {}).style || {})
     ).length;
+    const preset = this.previewPreset();
     const elements = card.elements
       .map((element, index) => {
         const style = element.config.style || {};
@@ -617,15 +696,33 @@ class VisualDashboardEditorPanel extends HTMLElement {
             )
             .join("")}
         </select>
-        <span>${visibleCount}/${card.elements.length} viditelnych prvku</span>
+        <select id="previewSize" title="Velikost nahledu">
+          ${Object.entries(this.previewPresets())
+            .map(
+              ([key, item]) =>
+                `<option value="${key}" ${key === this.state.previewSize ? "selected" : ""}>
+                  ${this.escape(item.label)}
+                </option>`
+            )
+            .join("")}
+        </select>
+        <span>${visibleCount} prvku s pozici</span>
       </div>
-      <div class="plan-stage">
-        ${
-          image
-            ? `<img class="plan-bg" src="${this.escape(image)}" alt="">`
-            : `<div class="missing-bg">Karta nema obrazek v poli image.</div>`
-        }
-        ${elements}
+      <div class="preview-frame">
+        <div class="plan-stage" style="width:${preset.width}px;">
+          <div id="realCardHost" class="real-card-host"></div>
+          <div class="fallback-preview">
+            ${
+              image
+                ? `<img class="plan-bg" src="${this.escape(image)}" alt="">`
+                : `<div class="missing-bg">Karta nema obrazek v poli image.</div>`
+            }
+          </div>
+          <div class="edit-overlay">
+            ${elements}
+          </div>
+        </div>
+        <div id="previewRenderError" class="preview-render-error"></div>
       </div>
     `;
   }
@@ -749,12 +846,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const card = this.currentCard();
     const items = this.filteredElements();
     if (!card) return "";
+    const totalPositioned = card.elements.filter((element) =>
+      this.hasPosition((element.config || {}).style || {})
+    ).length;
 
     return `
       <section class="element-list">
         <div class="element-list-head">
           <h2>Prvky</h2>
-          <span>${items.length}/${card.elements.length}</span>
+          <span>${items.length}/${totalPositioned}</span>
         </div>
         <input
           id="elementFilter"
@@ -766,8 +866,6 @@ class VisualDashboardEditorPanel extends HTMLElement {
           ${items
             .map(({ element, index }) => {
               const selected = this.samePath(element.path, this.state.selectedElementPath);
-              const style = element.config?.style || {};
-              const hasPosition = this.hasPosition(style);
               return `
                 <button
                   class="element-list-item ${selected ? "selected" : ""}"
@@ -776,7 +874,6 @@ class VisualDashboardEditorPanel extends HTMLElement {
                 >
                   <span class="element-list-title">${this.escape(this.displayLabel(element))}</span>
                   <span class="element-list-meta">${this.escape(this.elementSummary(element))}</span>
-                  ${hasPosition ? "" : `<span class="element-list-badge">bez pozice</span>`}
                 </button>
               `;
             })
@@ -810,6 +907,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       </div>
     `;
     this.bindEvents();
+    this.mountRealCard();
   }
 
   bindEvents() {
@@ -837,6 +935,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.selectedElementPath = null;
       this.state.advancedText = "";
       this.state.advancedDirty = false;
+      this.render();
+    });
+
+    const previewSize = this.shadowRoot.querySelector("#previewSize");
+    previewSize?.addEventListener("change", (event) => {
+      this.state.previewSize = event.target.value;
       this.render();
     });
 
@@ -1061,7 +1165,7 @@ const styles = `
   .element-list-items {
     display: grid;
     gap: 6px;
-    max-height: 420px;
+    max-height: 460px;
     overflow: auto;
     padding-right: 2px;
   }
@@ -1152,6 +1256,10 @@ const styles = `
     max-width: 420px;
   }
 
+  #previewSize {
+    flex: 0 0 190px;
+  }
+
   .preview-toolbar span {
     color: var(--vde-muted);
     font-size: 13px;
@@ -1159,10 +1267,16 @@ const styles = `
     white-space: nowrap;
   }
 
+  .preview-frame {
+    max-width: 100%;
+    overflow: auto;
+    padding-bottom: 8px;
+  }
+
   .plan-stage {
     position: relative;
-    width: min(100%, 1200px);
-    min-height: 540px;
+    max-width: none;
+    min-height: 220px;
     margin: 0 auto;
     border: 1px solid var(--vde-line);
     border-radius: 8px;
@@ -1176,13 +1290,45 @@ const styles = `
     background-position: 0 0, 0 12px, 12px -12px, -12px 0;
   }
 
+  .real-card-host {
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .real-card-host > * {
+    display: block;
+    width: 100%;
+  }
+
+  .fallback-preview {
+    position: relative;
+    z-index: 1;
+  }
+
+  .plan-stage.real-ready .fallback-preview {
+    display: none;
+  }
+
   .plan-bg {
     display: block;
     width: 100%;
     height: auto;
-    min-height: 540px;
     object-fit: contain;
     background: var(--vde-panel);
+  }
+
+  .edit-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .preview-render-error {
+    margin-top: 8px;
+    color: var(--vde-muted);
+    font-size: 12px;
   }
 
   .missing-bg,
@@ -1210,6 +1356,7 @@ const styles = `
     box-shadow: none;
     overflow: visible;
     touch-action: none;
+    pointer-events: auto;
   }
 
   .plan-element.has-explicit-size {
@@ -1233,7 +1380,10 @@ const styles = `
     background: rgba(8, 18, 26, 0.88);
     color: #ffffff;
     box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28);
+    opacity: 0;
     pointer-events: none;
+    transform: translateY(-3px);
+    transition: opacity 120ms ease, transform 120ms ease;
   }
 
   .chip-icon {
@@ -1256,10 +1406,10 @@ const styles = `
   .element-area {
     min-width: 38px;
     min-height: 28px;
-    border: 1px dashed rgba(0, 190, 255, 0.75);
+    border: 1px dashed rgba(0, 190, 255, 0.24);
     border-radius: 5px;
-    background: rgba(0, 146, 255, 0.045);
-    box-shadow: inset 0 0 0 1px rgba(0, 70, 120, 0.16);
+    background: rgba(0, 146, 255, 0.015);
+    box-shadow: inset 0 0 0 1px rgba(0, 70, 120, 0.07);
   }
 
   .element-area .element-chip {
@@ -1274,6 +1424,35 @@ const styles = `
   .element-marker {
     align-items: center;
     justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid rgba(0, 190, 255, 0.52);
+    border-radius: 999px;
+    background: rgba(8, 18, 26, 0.28);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  }
+
+  .element-marker .element-chip {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translate(-50%, 3px);
+  }
+
+  .plan-element:hover .element-chip,
+  .plan-element.selected .element-chip {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .element-marker:hover .element-chip,
+  .element-marker.selected .element-chip {
+    transform: translate(-50%, 5px);
+  }
+
+  .element-area:hover {
+    border-color: rgba(0, 190, 255, 0.72);
+    background: rgba(0, 146, 255, 0.055);
   }
 
   .element-marker.selected .element-chip,
