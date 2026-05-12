@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- Improve element labels so custom cards are named by their visible purpose instead of card implementation.
+- Add a selectable element list in the left sidebar for overlapped or hard-to-click elements.
+
 ## 0.2.2
 
 - Improve the preview for this 3Dplan style: data images, transparent hotspots, icon controls, widgets and element picking.

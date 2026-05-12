@@ -8,6 +8,7 @@ import io
 import json
 import logging
 from pathlib import Path
+import re
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -562,20 +563,19 @@ def _describe_picture_elements(
 
         element_path = [*path, index]
         label = _element_label(element, index)
-        display_label = f"{parent_label} / {label}" if parent_label else label
         elements.append(
             {
                 "index": len(elements),
                 "path": element_path,
                 "line": _line_number(element),
-                "label": display_label,
+                "label": label,
                 "config": _plain(element),
                 "fragment": _dump_yaml(element).strip(),
                 "parent": parent_label,
             }
         )
 
-        child_label = label if element.get("type") == "conditional" else display_label
+        child_label = label if element.get("type") == "conditional" else parent_label
         elements.extend(
             _describe_picture_elements(
                 element.get("elements"),
@@ -602,29 +602,202 @@ def _element_label(element: dict[str, Any], index: int) -> str:
             first = conditions[0]
             if isinstance(first, dict) and first.get("entity"):
                 state = first.get("state") or first.get("state_not")
-                suffix = f"={state}" if state else ""
-                return f"conditional {first['entity']}{suffix}"
+                entity = _humanize_entity_id(str(first["entity"]))
+                suffix = f" {state}" if state else ""
+                return f"Podminka: {entity}{suffix}"
 
     card_type = element.get("card_type")
     if card_type:
+        custom_label = _label_from_custom_content(element)
+        if custom_label:
+            return custom_label
+
+        name = element.get("name")
+        if name:
+            return str(name)
+
         custom_fields = element.get("custom_fields")
         if isinstance(custom_fields, dict):
-            title = custom_fields.get("title")
-            if isinstance(title, str) and "[[[" not in title and len(title) <= 48:
-                return title
+            for field_name in ("title", "name", "main", "body"):
+                field_label = _label_from_field(custom_fields.get(field_name))
+                if field_label:
+                    return field_label
+
+        if card_type == "horizontal-stack":
+            stack_label = _label_from_stack(element)
+            if stack_label:
+                return stack_label
+        if "calendar" in str(card_type):
+            return "Kalendar"
+
         entity = element.get("entity")
         if entity:
-            return str(entity)
+            return _humanize_entity_id(str(entity))
         icon = element.get("icon")
         if icon:
-            return str(icon)
-        return str(card_type)
+            return _humanize_icon(str(icon))
+        return _humanize_card_type(str(card_type))
+
+    if element.get("type") == "image":
+        image_label = _label_from_image(element.get("image"))
+        if image_label:
+            return image_label
 
     for key in ("name", "title", "entity", "icon", "image"):
         value = element.get(key)
         if value:
+            if key == "entity":
+                return _humanize_entity_id(str(value))
+            if key == "icon":
+                return _humanize_icon(str(value))
+            if key == "image":
+                return _label_from_image(value) or str(value)
             return str(value)
     return f"{element.get('type', 'element')} #{index + 1}"
+
+
+def _label_from_custom_content(element: dict[str, Any]) -> str | None:
+    """Infer a user-facing label from custom card content."""
+    haystack = json.dumps(_plain(element), ensure_ascii=False)
+    lowered = haystack.lower()
+
+    known_fragments = (
+        ("mhd_skola_snp", "Skola SNP MHD"),
+        ("status-line", "Stav domacnosti"),
+        ("outside-row", "Venkovni klima"),
+        ("teplota_obyvak", "Obyvak klima"),
+        ("loznice_teplota", "Loznice klima"),
+        ("senzor_kvality_vzduchu_loznice", "Loznice klima"),
+        ("presence_multi_sensor_fp300", "Koupelna klima"),
+        ("pracka_vykon", "Pracka / susicka"),
+        ("susicka_vykon", "Pracka / susicka"),
+        ("batteryids", "Baterie"),
+        ("availabilityids", "Dostupnost zarizeni"),
+        ("hosti_pin", "Nastaveni hostu"),
+    )
+    for needle, label in known_fragments:
+        if needle in lowered:
+            return label
+
+    return None
+
+
+def _label_from_field(value: Any) -> str | None:
+    """Extract a readable label from a custom field value."""
+    if not isinstance(value, str):
+        return None
+
+    stripped = value.strip()
+    if not stripped:
+        return None
+
+    if "[[[" not in stripped and "{%" not in stripped and "{{" not in stripped:
+        cleaned = re.sub(r"<[^>]+>", " ", stripped)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        return cleaned[:60] if 1 < len(cleaned) <= 60 else None
+
+    for pattern in (
+        r"return\s+[`'\"]([^`'\"]{2,60})[`'\"]",
+        r"title:\s*[`'\"]([^`'\"]{2,60})[`'\"]",
+    ):
+        match = re.search(pattern, stripped)
+        if match:
+            return match.group(1).strip()
+
+    return None
+
+
+def _label_from_stack(element: dict[str, Any]) -> str | None:
+    """Infer labels for horizontal/vertical stacks."""
+    cards = element.get("cards")
+    if not isinstance(cards, list):
+        return None
+
+    entities = [
+        str(card.get("entity"))
+        for card in cards
+        if isinstance(card, dict) and card.get("entity")
+    ]
+    if entities and all(entity.startswith("person.") for entity in entities):
+        return "Osoby"
+    if entities:
+        return ", ".join(_humanize_entity_id(entity) for entity in entities[:2])
+    return None
+
+
+def _label_from_image(value: Any) -> str | None:
+    """Infer labels for image elements."""
+    if not value:
+        return None
+    image = str(value)
+    lowered = image.lower()
+    if lowered.startswith("data:image") and "fill='black'" in lowered:
+        return "Levy panel pozadi"
+    name = Path(image.split("?", 1)[0]).stem
+    if not name:
+        return None
+    name = name.removeprefix("Planek-").removeprefix("planek-")
+    return _humanize_identifier(name)
+
+
+def _humanize_card_type(card_type: str) -> str:
+    """Make a card type readable."""
+    value = card_type.removeprefix("custom:").replace("-", " ")
+    return value.capitalize()
+
+
+def _humanize_icon(icon: str) -> str:
+    """Make an icon id readable."""
+    icon_map = {
+        "mdi:robot-vacuum": "Bob",
+        "mdi:television": "TV",
+        "mdi:lock": "Otevirani dveri",
+        "mdi:music": "Hudba",
+        "mdi:cog": "Nastaveni",
+        "mdi:lightning-bolt": "Energie",
+        "mdi:washing-machine": "Pracka / susicka",
+    }
+    if icon in icon_map:
+        return icon_map[icon]
+    return _humanize_identifier(icon.removeprefix("mdi:"))
+
+
+def _humanize_entity_id(entity_id: str) -> str:
+    """Make an entity id readable without requiring HA state access."""
+    if "." in entity_id:
+        entity_id = entity_id.split(".", 1)[1]
+    entity_id = entity_id.removesuffix("_group")
+    return _humanize_identifier(entity_id)
+
+
+def _humanize_identifier(value: str) -> str:
+    """Turn ids, file names and icon names into compact Czech-ish labels."""
+    cleaned = re.sub(r"[^0-9A-Za-zÀ-ž]+", " ", value).strip()
+    words = cleaned.split()
+    replacements = {
+        "obyvak": "Obyvak",
+        "loznice": "Loznice",
+        "kuchyn": "Kuchyn",
+        "koupelna": "Koupelna",
+        "zachod": "Zachod",
+        "pracovna": "Pracovna",
+        "svetla": "Svetla",
+        "svetlo": "Svetlo",
+        "vypinac": "Vypinac",
+        "hosti": "Hoste",
+        "otevirani": "Otevirani",
+        "dveri": "dveri",
+        "mhd": "MHD",
+        "skola": "Skola",
+        "snp": "SNP",
+        "next": "odjezdy",
+        "time": "Cas",
+        "vykon": "vykon",
+        "susicka": "susicka",
+        "pracka": "pracka",
+    }
+    readable = [replacements.get(word.lower(), word) for word in words]
+    return " ".join(readable).strip() or value
 
 
 def _plain(value: Any) -> Any:

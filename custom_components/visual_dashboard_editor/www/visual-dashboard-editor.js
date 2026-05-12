@@ -12,6 +12,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       selectedElementPath: null,
       advancedText: "",
       advancedDirty: false,
+      elementFilter: "",
       dirty: false,
       loading: false,
       status: "Vyber YAML dashboard.",
@@ -258,13 +259,42 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return (
       config.name ||
       config.title ||
+      element.label ||
       config.entity ||
       config.icon ||
       config.card_type ||
       config.type ||
-      element.label ||
       "element"
     );
+  }
+
+  elementSummary(element) {
+    const config = element.config || {};
+    const style = config.style || {};
+    const parts = [];
+    const kind = this.elementKind(config);
+
+    if (element.parent) parts.push(element.parent);
+    if (config.entity) parts.push(config.entity);
+    if (config.card_type) parts.push(config.card_type);
+    else if (config.type) parts.push(config.type);
+    if (style.left || style.top) parts.push(`${style.left || "-"}, ${style.top || "-"}`);
+    if (kind === "hotspot") parts.push("hotspot");
+
+    return parts.filter(Boolean).join(" · ");
+  }
+
+  filteredElements() {
+    const card = this.currentCard();
+    if (!card) return [];
+    const query = this.state.elementFilter.trim().toLowerCase();
+    return card.elements
+      .map((element, index) => ({ element, index }))
+      .filter(({ element }) => {
+        if (!query) return true;
+        const haystack = `${element.label} ${this.elementSummary(element)}`.toLowerCase();
+        return haystack.includes(query);
+      });
   }
 
   hasPosition(style) {
@@ -499,6 +529,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   renderFilePicker() {
+    const card = this.currentCard();
     return `
       <aside class="files">
         <div class="files-head">
@@ -514,9 +545,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
                 const suffix =
                   file.source === "lovelace"
                     ? file.cards
-                      ? ` · ${file.cards} karet`
-                      : " · UI"
-                    : " · YAML";
+                      ? ` - ${file.cards} karet`
+                      : " - UI"
+                    : " - YAML";
                 return (
                 `<option value="${this.escape(file.path)}" ${
                   file.path === this.state.selectedFile ? "selected" : ""
@@ -530,7 +561,49 @@ class VisualDashboardEditorPanel extends HTMLElement {
         </select>
         <button id="loadFile" class="primary" ${!this.state.selectedFile ? "disabled" : ""}>Nacist</button>
         <p class="muted">Editor umi UI/storage dashboardy a YAML soubory v HA configu. Hleda karty typu picture-elements.</p>
+        ${card ? this.renderElementList() : ""}
       </aside>
+    `;
+  }
+
+  renderElementList() {
+    const card = this.currentCard();
+    const items = this.filteredElements();
+    if (!card) return "";
+
+    return `
+      <section class="element-list">
+        <div class="element-list-head">
+          <h2>Prvky</h2>
+          <span>${items.length}/${card.elements.length}</span>
+        </div>
+        <input
+          id="elementFilter"
+          class="element-filter"
+          value="${this.escape(this.state.elementFilter)}"
+          placeholder="Hledat prvek"
+        >
+        <div class="element-list-items">
+          ${items
+            .map(({ element, index }) => {
+              const selected = this.samePath(element.path, this.state.selectedElementPath);
+              const style = element.config?.style || {};
+              const hasPosition = this.hasPosition(style);
+              return `
+                <button
+                  class="element-list-item ${selected ? "selected" : ""}"
+                  data-card-index="${this.state.cardIndex}"
+                  data-element-index="${index}"
+                >
+                  <span class="element-list-title">${this.escape(element.label)}</span>
+                  <span class="element-list-meta">${this.escape(this.elementSummary(element))}</span>
+                  ${hasPosition ? "" : `<span class="element-list-badge">bez pozice</span>`}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
     `;
   }
 
@@ -573,6 +646,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
       .querySelector("#loadFile")
       ?.addEventListener("click", () => this.loadFile(this.state.selectedFile));
 
+    this.shadowRoot.querySelector("#elementFilter")?.addEventListener("change", (event) => {
+      this.state.elementFilter = event.target.value;
+      this.render();
+    });
+
     const cardSelect = this.shadowRoot.querySelector("#cardSelect");
     cardSelect?.addEventListener("change", (event) => {
       this.state.cardIndex = Number.parseInt(event.target.value, 10) || 0;
@@ -598,6 +676,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
       });
       node.addEventListener("click", (event) => {
         event.preventDefault();
+        const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
+        const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
+        this.selectElement(cardIndex, elementIndex);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll(".element-list-item").forEach((node) => {
+      node.addEventListener("click", () => {
         const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
         const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
         this.selectElement(cardIndex, elementIndex);
@@ -773,8 +859,85 @@ const styles = `
   }
 
   #fileSelect {
-    height: 330px;
+    height: 220px;
     margin-bottom: 12px;
+  }
+
+  .element-list {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--vde-line);
+  }
+
+  .element-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .element-list-head span {
+    color: var(--vde-muted);
+    font-size: 12px;
+  }
+
+  .element-filter {
+    margin-bottom: 8px;
+  }
+
+  .element-list-items {
+    display: grid;
+    gap: 6px;
+    max-height: 420px;
+    overflow: auto;
+    padding-right: 2px;
+  }
+
+  .element-list-item {
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 3px 8px;
+    align-items: center;
+    text-align: left;
+    padding: 7px 8px;
+    border-radius: 6px;
+  }
+
+  .element-list-item.selected {
+    border-color: #ffb000;
+    box-shadow: inset 0 0 0 1px rgba(255, 176, 0, 0.65);
+    background: rgba(255, 176, 0, 0.12);
+  }
+
+  .element-list-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .element-list-meta {
+    grid-column: 1 / -1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--vde-muted);
+    font-size: 11px;
+  }
+
+  .element-list-badge {
+    align-self: start;
+    border-radius: 999px;
+    padding: 2px 6px;
+    background: rgba(105, 115, 134, 0.14);
+    color: var(--vde-muted);
+    font-size: 10px;
+    white-space: nowrap;
   }
 
   button {
