@@ -1,0 +1,14 @@
+{
+  "title": "Visual Dashboard Editor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Visual Dashboard Editor",
+        "description": "Enable the visual YAML dashboard editor panel."
+      }
+    },
+    "abort": {
+      "already_configured": "Visual Dashboard Editor is already configured."
+    }
+  }
+}

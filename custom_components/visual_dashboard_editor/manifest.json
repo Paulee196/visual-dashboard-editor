@@ -1,12 +1,14 @@
 {
   "domain": "visual_dashboard_editor",
   "name": "Visual Dashboard Editor",
-  "dependencies": ["frontend", "panel_custom", "websocket_api"],
+  "after_dependencies": ["frontend", "panel_custom"],
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://github.com/jiric/visual-dashboard-editor",
+  "documentation": "https://github.com/Paulee196/visual-dashboard-editor",
+  "integration_type": "service",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/jiric/visual-dashboard-editor/issues",
+  "issue_tracker": "https://github.com/Paulee196/visual-dashboard-editor/issues",
   "requirements": [],
+  "single_config_entry": true,
   "version": "0.1.0"
 }
