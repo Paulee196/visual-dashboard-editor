@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.7";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v4";
+const UI_VERSION = "0.2.8";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v5";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -14,8 +14,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
       selectedElementPath: null,
       advancedText: "",
       advancedDirty: false,
+      advancedExpanded: false,
       elementFilter: "",
-      previewSize: "desktop",
+      previewSize: "phone-414x896",
+      previewOrientation: "portrait",
       dirty: false,
       loading: false,
       status: "Vyber dashboard.",
@@ -281,16 +283,48 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   previewPresets() {
-    return {
-      desktop: { label: "Desktop 1280 px", width: 1280 },
-      wide: { label: "Full HD 1920 px", width: 1920 },
-      tablet: { label: "Tablet 768 px", width: 768 },
-      mobile: { label: "Mobil 390 px", width: 390 },
-    };
+    return [
+      { key: "phone-360x800", group: "Telefony", label: "Android 360 x 800", width: 360, height: 800 },
+      { key: "phone-375x812", group: "Telefony", label: "iPhone 375 x 812", width: 375, height: 812 },
+      { key: "phone-390x844", group: "Telefony", label: "iPhone 390 x 844", width: 390, height: 844 },
+      { key: "phone-393x873", group: "Telefony", label: "Android 393 x 873", width: 393, height: 873 },
+      { key: "phone-414x896", group: "Telefony", label: "414 x 896", width: 414, height: 896 },
+      { key: "phone-430x932", group: "Telefony", label: "iPhone Plus 430 x 932", width: 430, height: 932 },
+      { key: "phone-440x956", group: "Telefony", label: "iPhone Pro Max 440 x 956", width: 440, height: 956 },
+      { key: "phone-412x915", group: "Telefony", label: "Pixel/Galaxy 412 x 915", width: 412, height: 915 },
+      { key: "phone-448x998", group: "Telefony", label: "Velky Android 448 x 998", width: 448, height: 998 },
+      { key: "tablet-768x1024", group: "Tablety", label: "Tablet 768 x 1024", width: 768, height: 1024 },
+      { key: "tablet-800x1280", group: "Tablety", label: "Android tablet 800 x 1280", width: 800, height: 1280 },
+      { key: "tablet-820x1180", group: "Tablety", label: "iPad 820 x 1180", width: 820, height: 1180 },
+      { key: "tablet-834x1194", group: "Tablety", label: "iPad Pro 11 834 x 1194", width: 834, height: 1194 },
+      { key: "tablet-1024x1366", group: "Tablety", label: "iPad 13 1024 x 1366", width: 1024, height: 1366 },
+      { key: "display-1366x768", group: "Displeje", label: "Notebook 1366 x 768", width: 1366, height: 768 },
+      { key: "display-1536x864", group: "Displeje", label: "Notebook 1536 x 864", width: 1536, height: 864 },
+      { key: "display-1920x1080", group: "Displeje", label: "Full HD 1920 x 1080", width: 1920, height: 1080 },
+      { key: "display-2560x1440", group: "Displeje", label: "QHD 2560 x 1440", width: 2560, height: 1440 },
+      { key: "display-3840x2160", group: "Displeje", label: "4K 3840 x 2160", width: 3840, height: 2160 },
+    ];
   }
 
   previewPreset() {
-    return this.previewPresets()[this.state.previewSize] || this.previewPresets().desktop;
+    return (
+      this.previewPresets().find((preset) => preset.key === this.state.previewSize) ||
+      this.previewPresets()[0]
+    );
+  }
+
+  previewDimensions() {
+    const preset = this.previewPreset();
+    if (this.state.previewOrientation === "landscape") {
+      return {
+        width: Math.max(preset.width, preset.height),
+        height: Math.min(preset.width, preset.height),
+      };
+    }
+    return {
+      width: Math.min(preset.width, preset.height),
+      height: Math.max(preset.width, preset.height),
+    };
   }
 
   displayLabel(element) {
@@ -606,16 +640,52 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   async mountRealCard() {
-    const host = this.shadowRoot.querySelector("#realCardHost");
+    const frame = this.shadowRoot.querySelector("#cardFrame");
     const stage = this.shadowRoot.querySelector(".plan-stage");
     const error = this.shadowRoot.querySelector("#previewRenderError");
     const card = this.currentCard();
     const cardIndex = this.state.cardIndex;
     this._realCard = null;
 
-    if (!host || !stage || !card?.config || !this.hass) return;
+    if (!frame || !stage || !card?.config || !this.hass) return;
+    this._frameResizeObserver?.disconnect();
+    this._frameResizeObserver = null;
 
     try {
+      const dimensions = this.previewDimensions();
+      frame.style.height = `${dimensions.height}px`;
+      stage.style.height = `${dimensions.height}px`;
+
+      const doc = frame.contentDocument;
+      if (!doc) {
+        throw new Error("Iframe dokument neni dostupny.");
+      }
+
+      doc.open();
+      doc.write(`
+        <!doctype html>
+        <html>
+          <head>
+            <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                min-height: 1px;
+                overflow: hidden;
+                background: transparent;
+                color-scheme: light dark;
+                font-family: system-ui, sans-serif;
+              }
+              #root { width: 100%; }
+              #root > * { display: block; width: 100%; }
+            </style>
+          </head>
+          <body><div id="root"></div></body>
+        </html>
+      `);
+      doc.close();
+
       const config = this.cloneConfig(card.config);
       let element;
       if (window.loadCardHelpers) {
@@ -625,18 +695,33 @@ class VisualDashboardEditorPanel extends HTMLElement {
         element = document.createElement("hui-picture-elements-card");
         element.setConfig(config);
       }
-      if (!host.isConnected || this.state.cardIndex !== cardIndex) return;
+      if (!frame.isConnected || this.state.cardIndex !== cardIndex) return;
       element.hass = this.hass;
       element.classList.add("real-card");
-      host.replaceChildren(element);
+      doc.getElementById("root").appendChild(element);
       this._realCard = element;
       stage.classList.add("real-ready");
       stage.classList.remove("real-failed");
       if (error) error.textContent = "";
+
+      const syncHeight = () => {
+        if (!frame.isConnected || this.state.cardIndex !== cardIndex) return;
+        const height = Math.max(
+          220,
+          Math.ceil(element.getBoundingClientRect().height || doc.body.scrollHeight || 0)
+        );
+        frame.style.height = `${height}px`;
+        stage.style.height = `${height}px`;
+      };
+      requestAnimationFrame(syncHeight);
+      setTimeout(syncHeight, 80);
+      setTimeout(syncHeight, 400);
+      this._frameResizeObserver = new ResizeObserver(syncHeight);
+      this._frameResizeObserver.observe(element);
     } catch (err) {
-      host.replaceChildren();
       stage.classList.remove("real-ready");
       stage.classList.add("real-failed");
+      stage.style.height = "";
       if (error) {
         error.textContent = `Realne vykresleni se nepovedlo, pouzivam nouzovy nahled: ${
           err?.message || err
@@ -654,7 +739,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const visibleCount = card.elements.filter((element) =>
       this.hasPosition((element.config || {}).style || {})
     ).length;
-    const preset = this.previewPreset();
+    const dimensions = this.previewDimensions();
+    const presetGroups = this.previewPresets().reduce((groups, preset) => {
+      groups[preset.group] = groups[preset.group] || [];
+      groups[preset.group].push(preset);
+      return groups;
+    }, {});
     const elements = card.elements
       .map((element, index) => {
         const style = element.config.style || {};
@@ -697,20 +787,29 @@ class VisualDashboardEditorPanel extends HTMLElement {
             .join("")}
         </select>
         <select id="previewSize" title="Velikost nahledu">
-          ${Object.entries(this.previewPresets())
-            .map(
-              ([key, item]) =>
-                `<option value="${key}" ${key === this.state.previewSize ? "selected" : ""}>
-                  ${this.escape(item.label)}
-                </option>`
-            )
+          ${Object.entries(presetGroups)
+            .map(([group, presets]) => {
+              const options = presets
+                .map(
+                  (item) =>
+                    `<option value="${item.key}" ${item.key === this.state.previewSize ? "selected" : ""}>
+                      ${this.escape(item.label)}
+                    </option>`
+                )
+                .join("");
+              return `<optgroup label="${this.escape(group)}">${options}</optgroup>`;
+            })
             .join("")}
+        </select>
+        <select id="previewOrientation" title="Orientace nahledu">
+          <option value="portrait" ${this.state.previewOrientation === "portrait" ? "selected" : ""}>Na vysku</option>
+          <option value="landscape" ${this.state.previewOrientation === "landscape" ? "selected" : ""}>Na sirku</option>
         </select>
         <span>${visibleCount} prvku s pozici</span>
       </div>
       <div class="preview-frame">
-        <div class="plan-stage" style="width:${preset.width}px;">
-          <div id="realCardHost" class="real-card-host"></div>
+        <div class="plan-stage" style="width:${dimensions.width}px;" data-viewport="${dimensions.width}x${dimensions.height}">
+          <iframe id="cardFrame" class="card-frame" title="Nahled dashboardu"></iframe>
           <div class="fallback-preview">
             ${
               image
@@ -798,9 +897,35 @@ class VisualDashboardEditorPanel extends HTMLElement {
         <details class="advanced" ${this.state.advancedDirty ? "open" : ""}>
           <summary>Pokrocily YAML fragment</summary>
           <textarea id="advancedText" spellcheck="false">${this.escape(this.state.advancedText)}</textarea>
-          <button id="saveAdvanced" ${this.state.loading ? "disabled" : ""}>Ulozit YAML fragment</button>
+          <div class="advanced-actions">
+            <button id="openAdvancedModal" type="button">Zvetsit editor</button>
+            <button id="saveAdvanced" type="button" ${this.state.loading ? "disabled" : ""}>Ulozit YAML fragment</button>
+          </div>
         </details>
       </section>
+    `;
+  }
+
+  renderAdvancedModal() {
+    const element = this.currentElement();
+    if (!this.state.advancedExpanded || !element) return "";
+
+    return `
+      <div id="advancedModalBackdrop" class="modal-backdrop">
+        <section class="yaml-modal" role="dialog" aria-modal="true" aria-label="Pokrocily YAML fragment">
+          <div class="yaml-modal-head">
+            <div>
+              <h2>${this.escape(this.displayLabel(element))}</h2>
+              <p>Pokrocily YAML fragment</p>
+            </div>
+            <button id="closeAdvancedModal" type="button">Zavrit</button>
+          </div>
+          <textarea id="advancedModalText" spellcheck="false">${this.escape(this.state.advancedText)}</textarea>
+          <div class="yaml-modal-actions">
+            <button id="saveAdvancedModal" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>Ulozit YAML fragment</button>
+          </div>
+        </section>
+      </div>
     `;
   }
 
@@ -904,6 +1029,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
           </section>
           ${this.renderInspector()}
         </main>
+        ${this.renderAdvancedModal()}
       </div>
     `;
     this.bindEvents();
@@ -941,6 +1067,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const previewSize = this.shadowRoot.querySelector("#previewSize");
     previewSize?.addEventListener("change", (event) => {
       this.state.previewSize = event.target.value;
+      this.render();
+    });
+
+    const previewOrientation = this.shadowRoot.querySelector("#previewOrientation");
+    previewOrientation?.addEventListener("change", (event) => {
+      this.state.previewOrientation = event.target.value;
       this.render();
     });
 
@@ -989,10 +1121,35 @@ class VisualDashboardEditorPanel extends HTMLElement {
       .querySelector("#saveAdvanced")
       ?.addEventListener("click", () => this.saveSelected(true));
 
+    this.shadowRoot.querySelector("#openAdvancedModal")?.addEventListener("click", () => {
+      this.state.advancedExpanded = true;
+      this.render();
+    });
+    this.shadowRoot.querySelector("#closeAdvancedModal")?.addEventListener("click", () => {
+      this.state.advancedExpanded = false;
+      this.render();
+    });
+    this.shadowRoot.querySelector("#advancedModalBackdrop")?.addEventListener("click", (event) => {
+      if (event.target.id === "advancedModalBackdrop") {
+        this.state.advancedExpanded = false;
+        this.render();
+      }
+    });
+    this.shadowRoot
+      .querySelector("#saveAdvancedModal")
+      ?.addEventListener("click", () => this.saveSelected(true));
+
     this.shadowRoot.querySelector("#advancedText")?.addEventListener("input", (event) => {
       this.state.advancedText = event.target.value;
       this.state.advancedDirty = true;
       this.state.status = "YAML fragment je upraveny, jeste ulozit.";
+    });
+    this.shadowRoot.querySelector("#advancedModalText")?.addEventListener("input", (event) => {
+      this.state.advancedText = event.target.value;
+      this.state.advancedDirty = true;
+      this.state.status = "YAML fragment je upraveny, jeste ulozit.";
+      const inline = this.shadowRoot.querySelector("#advancedText");
+      if (inline) inline.value = event.target.value;
     });
   }
 }
@@ -1257,7 +1414,11 @@ const styles = `
   }
 
   #previewSize {
-    flex: 0 0 190px;
+    flex: 0 0 260px;
+  }
+
+  #previewOrientation {
+    flex: 0 0 120px;
   }
 
   .preview-toolbar span {
@@ -1290,15 +1451,15 @@ const styles = `
     background-position: 0 0, 0 12px, 12px -12px, -12px 0;
   }
 
-  .real-card-host {
-    position: relative;
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  .real-card-host > * {
+  .card-frame {
     display: block;
     width: 100%;
+    height: 220px;
+    border: 0;
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    pointer-events: none;
   }
 
   .fallback-preview {
@@ -1406,10 +1567,10 @@ const styles = `
   .element-area {
     min-width: 38px;
     min-height: 28px;
-    border: 1px dashed rgba(0, 190, 255, 0.24);
+    border: 0;
     border-radius: 5px;
-    background: rgba(0, 146, 255, 0.015);
-    box-shadow: inset 0 0 0 1px rgba(0, 70, 120, 0.07);
+    background: transparent;
+    box-shadow: none;
   }
 
   .element-area .element-chip {
@@ -1424,12 +1585,12 @@ const styles = `
   .element-marker {
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
-    border: 1px solid rgba(0, 190, 255, 0.52);
+    width: 34px;
+    height: 34px;
+    border: 0;
     border-radius: 999px;
-    background: rgba(8, 18, 26, 0.28);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+    background: transparent;
+    box-shadow: none;
   }
 
   .element-marker .element-chip {
@@ -1451,18 +1612,13 @@ const styles = `
   }
 
   .element-area:hover {
-    border-color: rgba(0, 190, 255, 0.72);
-    background: rgba(0, 146, 255, 0.055);
+    background: transparent;
   }
 
   .element-marker.selected .element-chip,
-  .element-area.selected {
-    border-color: #ffb000;
-    box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.28);
-  }
-
   .element-area.selected .element-chip {
     border-color: rgba(255, 176, 0, 0.78);
+    box-shadow: 0 3px 14px rgba(255, 176, 0, 0.22);
   }
 
   .nested-element::after {
@@ -1527,8 +1683,55 @@ const styles = `
     white-space: pre;
   }
 
-  .advanced button {
+  .advanced-actions,
+  .yaml-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
     margin-top: 10px;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 28px;
+    background: rgba(0, 0, 0, 0.58);
+  }
+
+  .yaml-modal {
+    width: min(1180px, 94vw);
+    height: min(820px, 88vh);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border: 1px solid var(--vde-line);
+    border-radius: 8px;
+    background: var(--vde-panel);
+    color: var(--vde-text);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+    padding: 16px;
+  }
+
+  .yaml-modal-head {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .yaml-modal-head p {
+    color: var(--vde-muted);
+    font-size: 13px;
+  }
+
+  #advancedModalText {
+    min-height: 0;
+    height: 100%;
+    resize: none;
+    font-size: 13px;
   }
 
   @media (max-width: 1100px) {

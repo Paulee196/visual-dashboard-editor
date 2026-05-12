@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.8
+
+- Render the real card inside an internal viewport preview so width-based responsive CSS behaves closer to phone and tablet screens.
+- Make the edit overlay transparent by default, leaving only hover/selected labels instead of visible frames.
+- Add more phone, tablet and display viewport presets with a portrait/landscape orientation selector.
+- Add an expanded modal editor for long advanced YAML fragments.
+
 ## 0.2.7
 
 - Render the selected picture-elements card through Home Assistant's real card renderer, with a thin edit layer on top.
