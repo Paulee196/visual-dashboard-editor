@@ -4,6 +4,14 @@ Prvni prototyp vizualniho editoru pro YAML dashboardy v Home Assistantu. Cil je 
 
 Aktualni MVP je zamerene na karty typu `picture-elements`, protoze prave ty se casto pouzivaji pro 3D floorplan dashboardy.
 
+## Rychla instalace
+
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Paulee196&repository=visual-dashboard-editor&category=integration)
+
+Po instalaci a restartu muzes integraci rovnou pridat tady:
+
+[![Open your Home Assistant instance and start setting up Visual Dashboard Editor.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=visual_dashboard_editor)
+
 ## Co to umi ted
 
 - prida do Home Assistantu sidebar panel `Visual Dashboard Editor`
@@ -20,7 +28,7 @@ Aktualni MVP je zamerene na karty typu `picture-elements`, protoze prave ty se c
 
 ### Pres HACS jako custom repository
 
-1. V HACS pridej repozitar jako `Integration`.
+1. Klikni na tlacitko v sekci `Rychla instalace`, nebo v HACS pridej repozitar jako `Integration`.
 2. Nainstaluj `Visual Dashboard Editor`.
 3. Restartuj Home Assistant.
 4. V `Settings -> Devices & services -> Add integration` pridej `Visual Dashboard Editor`.
@@ -69,4 +77,3 @@ Home Assistant umi vlastni panely a vlastni karty pres frontend custom elements.
 - podpora `custom:config-template-card`
 - volitelny frontend resource, ktery prida male `Visual edit` tlacitko primo do dashboardu
 - podpora storage dashboardu pres Lovelace API
-
