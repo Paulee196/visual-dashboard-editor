@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Expose nested picture-elements children, especially elements inside `conditional` wrappers.
+
 ## 0.2.0
 
 - Add support for UI-managed Lovelace storage dashboards.

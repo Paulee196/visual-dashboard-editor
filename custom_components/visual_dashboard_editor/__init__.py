@@ -536,21 +536,7 @@ def _describe_picture_card(
     card: dict[str, Any], path: list[str | int], card_index: int
 ) -> dict[str, Any]:
     """Create frontend metadata for one picture-elements card."""
-    elements = []
-    for index, element in enumerate(card.get("elements", [])):
-        if not isinstance(element, dict):
-            continue
-        element_path = [*path, "elements", index]
-        elements.append(
-            {
-                "index": index,
-                "path": element_path,
-                "line": _line_number(element),
-                "label": _element_label(element, index),
-                "config": _plain(element),
-                "fragment": _dump_yaml(element).strip(),
-            }
-        )
+    elements = _describe_picture_elements(card.get("elements", []), [*path, "elements"])
 
     return {
         "index": card_index,
@@ -560,6 +546,45 @@ def _describe_picture_card(
         "image": card.get("image") or card.get("dark_mode_image") or "",
         "elements": elements,
     }
+
+
+def _describe_picture_elements(
+    elements_node: Any, path: list[str | int], parent_label: str | None = None
+) -> list[dict[str, Any]]:
+    """Describe picture-elements recursively, including conditional children."""
+    if not isinstance(elements_node, list):
+        return []
+
+    elements: list[dict[str, Any]] = []
+    for index, element in enumerate(elements_node):
+        if not isinstance(element, dict):
+            continue
+
+        element_path = [*path, index]
+        label = _element_label(element, index)
+        display_label = f"{parent_label} / {label}" if parent_label else label
+        elements.append(
+            {
+                "index": len(elements),
+                "path": element_path,
+                "line": _line_number(element),
+                "label": display_label,
+                "config": _plain(element),
+                "fragment": _dump_yaml(element).strip(),
+                "parent": parent_label,
+            }
+        )
+
+        child_label = label if element.get("type") == "conditional" else display_label
+        elements.extend(
+            _describe_picture_elements(
+                element.get("elements"),
+                [*element_path, "elements"],
+                child_label,
+            )
+        )
+
+    return elements
 
 
 def _line_number(node: Any) -> int | None:
