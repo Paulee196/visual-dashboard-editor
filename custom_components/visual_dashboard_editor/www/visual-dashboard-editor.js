@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.9";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v6";
+const UI_VERSION = "0.2.10";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v7";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -37,8 +37,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   connectedCallback() {
+    this._onResize = () => this.syncPreviewFit();
+    window.addEventListener("resize", this._onResize);
     this.render();
     this.loadFiles();
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener("resize", this._onResize);
+    this._frameResizeObserver?.disconnect();
   }
 
   async callWS(message) {
@@ -288,7 +295,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       { key: "phone-63", group: "Telefony", label: '6,3" iPhone Pro / Galaxy S', width: 402, height: 874 },
       { key: "phone-65", group: "Telefony", label: '6,5" iPhone / Samsung', width: 414, height: 896 },
       { key: "phone-67", group: "Telefony", label: '6,7" iPhone Plus / Galaxy+', width: 430, height: 932 },
-      { key: "phone-69", group: "Telefony", label: '6,9" iPhone Max / Galaxy Ultra', width: 440, height: 956 },
+      { key: "phone-68", group: "Telefony", label: '6,8" Galaxy S22/S23/S24 Ultra', width: 412, height: 915 },
+      { key: "phone-69", group: "Telefony", label: '6,9" iPhone Max / Galaxy S25 Ultra', width: 440, height: 956 },
       { key: "tablet-89", group: "Tablety", label: '8,9" kompaktni tablet', width: 768, height: 1024 },
       { key: "tablet-10", group: "Tablety", label: '10" tablet', width: 800, height: 1280 },
       { key: "tablet-11", group: "Tablety", label: '11" iPad / Galaxy Tab', width: 834, height: 1194 },
@@ -634,6 +642,24 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return JSON.parse(JSON.stringify(config || {}));
   }
 
+  syncPreviewFit() {
+    const frame = this.shadowRoot?.querySelector(".preview-frame");
+    const fit = this.shadowRoot?.querySelector("#previewFit");
+    const stage = this.shadowRoot?.querySelector(".plan-stage");
+    if (!frame || !fit || !stage) return;
+
+    const dimensions = this.previewDimensions();
+    const frameRect = frame.getBoundingClientRect();
+    const fitRect = fit.getBoundingClientRect();
+    const availableWidth = Math.max(280, frame.clientWidth || frameRect.width || dimensions.width);
+    const availableHeight = Math.max(280, window.innerHeight - fitRect.top - 26);
+    const rawHeight = Math.max(stage.scrollHeight, stage.offsetHeight, dimensions.height, 220);
+    const scale = Math.min(1, availableWidth / dimensions.width, availableHeight / rawHeight);
+
+    stage.style.setProperty("--preview-scale", String(scale));
+    fit.style.height = `${Math.ceil(rawHeight * scale)}px`;
+  }
+
   async mountRealCard() {
     const host = this.shadowRoot.querySelector("#realCardHost");
     const stage = this.shadowRoot.querySelector(".plan-stage");
@@ -665,6 +691,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
       stage.classList.remove("real-failed");
       stage.style.height = "";
       if (error) error.textContent = "";
+      requestAnimationFrame(() => this.syncPreviewFit());
+      setTimeout(() => this.syncPreviewFit(), 80);
+      setTimeout(() => this.syncPreviewFit(), 400);
     } catch (err) {
       host.replaceChildren();
       stage.classList.remove("real-ready");
@@ -675,6 +704,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
           err?.message || err
         }`;
       }
+      requestAnimationFrame(() => this.syncPreviewFit());
     }
   }
 
@@ -756,17 +786,19 @@ class VisualDashboardEditorPanel extends HTMLElement {
         <span>${visibleCount} prvku s pozici</span>
       </div>
       <div class="preview-frame">
-        <div class="plan-stage" style="width:${dimensions.width}px;" data-viewport="${dimensions.width}x${dimensions.height}">
-          <div id="realCardHost" class="real-card-host"></div>
-          <div class="fallback-preview">
-            ${
-              image
-                ? `<img class="plan-bg" src="${this.escape(image)}" alt="">`
-                : `<div class="missing-bg">Karta nema obrazek v poli image.</div>`
-            }
-          </div>
-          <div class="edit-overlay">
-            ${elements}
+        <div id="previewFit" class="preview-fit">
+          <div class="plan-stage" style="width:${dimensions.width}px;" data-viewport="${dimensions.width}x${dimensions.height}">
+            <div id="realCardHost" class="real-card-host"></div>
+            <div class="fallback-preview">
+              ${
+                image
+                  ? `<img class="plan-bg" src="${this.escape(image)}" alt="">`
+                  : `<div class="missing-bg">Karta nema obrazek v poli image.</div>`
+              }
+            </div>
+            <div class="edit-overlay">
+              ${elements}
+            </div>
           </div>
         </div>
         <div id="previewRenderError" class="preview-render-error"></div>
@@ -982,6 +1014,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     `;
     this.bindEvents();
     this.mountRealCard();
+    this.syncPreviewFit();
   }
 
   bindEvents() {
@@ -1378,12 +1411,22 @@ const styles = `
 
   .preview-frame {
     max-width: 100%;
-    overflow: auto;
+    overflow: hidden;
     padding-bottom: 8px;
+  }
+
+  .preview-fit {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    min-height: 220px;
   }
 
   .plan-stage {
     position: relative;
+    flex: 0 0 auto;
     max-width: none;
     min-height: 220px;
     margin: 0 auto;
@@ -1397,6 +1440,8 @@ const styles = `
       linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.035) 75%);
     background-size: 24px 24px;
     background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    transform: scale(var(--preview-scale, 1));
+    transform-origin: top center;
   }
 
   .real-card-host {
@@ -1565,16 +1610,12 @@ const styles = `
 
   .element-marker.selected .element-chip,
   .element-area.selected .element-chip {
-    border-color: rgba(255, 176, 0, 0.78);
-    box-shadow: 0 3px 14px rgba(255, 176, 0, 0.22);
+    border-color: rgba(59, 130, 246, 0.78);
+    box-shadow: 0 3px 14px rgba(59, 130, 246, 0.2);
   }
 
   .nested-element::after {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    border: 1px solid rgba(255, 176, 0, 0.18);
-    pointer-events: none;
+    content: none;
   }
 
   .ha-like-icon {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.10
+
+- Fit large virtual display previews into the available editor area so the full dashboard stays visible.
+- Add a Samsung Ultra 6.8" phone preset for Galaxy S22/S23/S24 Ultra style viewports.
+- Remove the yellow nested-element outlines from the edit overlay.
+
 ## 0.2.9
 
 - Restore the normal Home Assistant card preview instead of the iframe viewport experiment.
