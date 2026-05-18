@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.15";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v12";
+const UI_VERSION = "0.2.16";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v13";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -278,59 +278,6 @@ class VisualDashboardEditorPanel extends HTMLElement {
       left: ((event.clientX - rect.left) / width) * 100,
       top: ((event.clientY - rect.top) / height) * 100,
     };
-  }
-
-  hitTestElement(event) {
-    const nodes = Array.from(this.shadowRoot.querySelectorAll(".plan-element"));
-    const x = event.clientX;
-    const y = event.clientY;
-    const candidates = [];
-
-    for (const node of nodes) {
-      if (node.classList.contains("click-through")) continue;
-      const rect = node.getBoundingClientRect();
-      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) continue;
-
-      const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
-      const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
-      const element = this.state.cards[cardIndex]?.elements?.[elementIndex];
-      if (!element) continue;
-
-      const area = Math.max(rect.width * rect.height, 1);
-      const centerDistance = Math.hypot(
-        x - (rect.left + rect.width / 2),
-        y - (rect.top + rect.height / 2)
-      );
-      const zIndex = Number.parseFloat(node.style.zIndex || "0") || 0;
-      const kindScore = this.hitTestKindScore(element, node);
-      const score = kindScore + zIndex * 100 + 100000 / area - centerDistance * 0.02 + elementIndex * 0.001;
-
-      candidates.push({ cardIndex, elementIndex, node, score });
-    }
-
-    candidates.sort((a, b) => b.score - a.score);
-    return candidates[0] || null;
-  }
-
-  hitTestKindScore(element, node) {
-    if (node.classList.contains("element-hotspot")) return 0;
-    if (node.classList.contains("element-widget")) return 6000;
-    if (node.classList.contains("element-calendar")) return 5600;
-    if (node.classList.contains("element-stack")) return 5400;
-    if (node.classList.contains("element-icon")) return 5200;
-    if (node.classList.contains("element-label")) return 5000;
-    if (node.classList.contains("element-image")) return 3000;
-    return this.isTransparentCard(element.config || {}) ? 0 : 4000;
-  }
-
-  setHoveredElement(hit) {
-    const key = hit ? `${hit.cardIndex}:${hit.elementIndex}` : "";
-    if (this._hoveredElementKey === key) return;
-    this._hoveredElementKey = key;
-    this.shadowRoot.querySelectorAll(".plan-element.hovered").forEach((node) => {
-      node.classList.remove("hovered");
-    });
-    hit?.node?.classList.add("hovered");
   }
 
   clamp(value, min, max) {
@@ -1188,18 +1135,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.render();
     });
 
-    const overlay = this.shadowRoot.querySelector(".edit-overlay");
-    overlay?.addEventListener("pointermove", (event) => {
-      this.setHoveredElement(this.hitTestElement(event));
-    });
-    overlay?.addEventListener("pointerleave", () => {
-      this.setHoveredElement(null);
-    });
-    overlay?.addEventListener("pointerdown", (event) => {
-      const hit = this.hitTestElement(event);
-      if (!hit) return;
-      this.setHoveredElement(hit);
-      this.startDrag(event, hit.cardIndex, hit.elementIndex);
+    this.shadowRoot.querySelectorAll(".plan-element").forEach((node) => {
+      node.addEventListener("pointerdown", (event) => {
+        const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
+        const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
+        this.startDrag(event, cardIndex, elementIndex);
+      });
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
+        const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
+        this.selectElement(cardIndex, elementIndex);
+      });
     });
 
     this.shadowRoot.querySelectorAll(".element-list-item").forEach((node) => {
@@ -1645,8 +1592,7 @@ const styles = `
     position: absolute;
     inset: 0;
     z-index: 2;
-    cursor: crosshair;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .preview-render-error {
@@ -1680,7 +1626,7 @@ const styles = `
     box-shadow: none;
     overflow: visible;
     touch-action: none;
-    pointer-events: none;
+    pointer-events: auto;
   }
 
   .plan-element.click-through {
@@ -1767,18 +1713,18 @@ const styles = `
     transform: translate(-50%, 3px);
   }
 
-  .plan-element.hovered .element-chip,
+  .plan-element:hover .element-chip,
   .plan-element.selected .element-chip {
     opacity: 1;
     transform: translateY(0);
   }
 
-  .element-marker.hovered .element-chip,
+  .element-marker:hover .element-chip,
   .element-marker.selected .element-chip {
     transform: translate(-50%, 5px);
   }
 
-  .element-area.hovered {
+  .element-area:hover {
     background: transparent;
   }
 

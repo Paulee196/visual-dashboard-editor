@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.16
+
+- Restore native per-element overlay hit targets from the earlier framed editor, but keep the hitbox borders invisible.
+- Keep only hover/selected labels visible so the dashboard preview stays clean while clicking follows the old reliable target boxes.
+
 ## 0.2.15
 
 - Replace native overlay button hit-testing with a custom point picker that prefers visible widgets over large invisible hotspots.
