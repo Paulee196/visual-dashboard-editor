@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.13";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v10";
+const UI_VERSION = "0.2.14";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v11";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -124,15 +124,21 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return left.every((part, index) => part === right[index]);
   }
 
-  selectElement(cardIndex, elementIndex) {
+  setSelectedElement(cardIndex, elementIndex) {
     const card = this.state.cards[cardIndex];
     const element = card && card.elements[elementIndex];
-    if (!element) return;
+    if (!element) return null;
     this.state.cardIndex = cardIndex;
     this.state.selectedElementPath = [...element.path];
     this.state.advancedText = element.fragment || "";
     this.state.advancedDirty = false;
     this.state.status = `Vybrano: ${this.displayLabel(element)}`;
+    return element;
+  }
+
+  selectElement(cardIndex, elementIndex) {
+    const element = this.setSelectedElement(cardIndex, elementIndex);
+    if (!element) return;
     this.render();
   }
 
@@ -207,17 +213,33 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    this.selectElement(cardIndex, elementIndex);
 
     const stage = this.shadowRoot.querySelector(".plan-stage");
     const card = this.state.cards[cardIndex];
     const element = card && card.elements[elementIndex];
     if (!stage || !element) return;
 
+    this.setSelectedElement(cardIndex, elementIndex);
+
     const rect = stage.getBoundingClientRect();
+    const style = element.config.style || {};
+    const parsedLeft = this.percentToNumber(style.left);
+    const parsedTop = this.percentToNumber(style.top);
+    const startLeft = Number.isFinite(parsedLeft) ? parsedLeft : 50;
+    const startTop = Number.isFinite(parsedTop) ? parsedTop : 50;
+    const startPointer = this.pointerToStagePercent(event, rect);
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+    let dragging = false;
+
     const move = (moveEvent) => {
-      const left = ((moveEvent.clientX - rect.left) / rect.width) * 100;
-      const top = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+      const distance = Math.hypot(moveEvent.clientX - startClientX, moveEvent.clientY - startClientY);
+      if (!dragging && distance < 4) return;
+      dragging = true;
+
+      const pointer = this.pointerToStagePercent(moveEvent, rect);
+      const left = startLeft + pointer.left - startPointer.left;
+      const top = startTop + pointer.top - startPointer.top;
       const leftText = `${this.clamp(left, 0, 100).toFixed(1)}%`;
       const topText = `${this.clamp(top, 0, 100).toFixed(1)}%`;
       element.config.style = element.config.style || {};
@@ -247,6 +269,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+  }
+
+  pointerToStagePercent(event, rect) {
+    const width = rect.width || 1;
+    const height = rect.height || 1;
+    return {
+      left: ((event.clientX - rect.left) / width) * 100,
+      top: ((event.clientY - rect.top) / height) * 100,
+    };
   }
 
   clamp(value, min, max) {
@@ -604,7 +635,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (this.samePath(element.path, this.state.selectedElementPath)) classes.push("selected");
     if (style.width || style.height) classes.push("has-explicit-size");
     if (element.parent) classes.push("nested-element");
+    if (this.isClickThrough(style)) classes.push("click-through");
     return classes.join(" ");
+  }
+
+  isClickThrough(style) {
+    return String(style?.["pointer-events"] || "").trim().toLowerCase() === "none";
   }
 
   fallbackIcon(config) {
@@ -756,6 +792,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
         const width = style.width ? `width:${this.cssValue(style.width)};` : "";
         const height = style.height ? `height:${this.cssValue(style.height)};` : "";
         const opacity = style.opacity ? `opacity:${this.cssValue(style.opacity)};` : "";
+        const zIndexValue = style["z-index"] || style.zIndex;
+        const zIndex = zIndexValue ? `z-index:${this.cssValue(zIndexValue)};` : "";
         const transform = style.transform
           ? `transform:${this.cssValue(style.transform)};`
           : "transform:translate(-50%, -50%);";
@@ -765,7 +803,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
         return `
           <button
             class="${classes}"
-            style="left:${left};top:${top};${width}${height}${opacity}${transform}"
+            style="left:${left};top:${top};${width}${height}${opacity}${zIndex}${transform}"
             data-card-index="${this.state.cardIndex}"
             data-element-index="${index}"
             title="${this.escape(this.displayLabel(element))}"
@@ -1589,12 +1627,16 @@ const styles = `
     pointer-events: auto;
   }
 
+  .plan-element.click-through {
+    pointer-events: none;
+  }
+
   .plan-element.has-explicit-size {
     padding: 0;
   }
 
   .plan-element.selected {
-    z-index: 1000;
+    z-index: 1000 !important;
   }
 
   .element-chip {

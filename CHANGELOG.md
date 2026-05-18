@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.14
+
+- Make preview element selection more accurate by letting YAML `pointer-events: none` layers pass clicks through in the editor overlay.
+- Keep the original pointer offset while dragging so large clickable zones no longer jump under the cursor.
+- Apply element `z-index` in the editor overlay so overlapping click targets follow the dashboard stacking order more closely.
+
 ## 0.2.13
 
 - Add a preview scale selector with a whole-dashboard fit mode and an exact 1:1 CSS viewport mode.
