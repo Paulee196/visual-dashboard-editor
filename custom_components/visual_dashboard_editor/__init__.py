@@ -132,7 +132,7 @@ async def _ws_list_files(
     connection: Any,
     msg: dict[str, Any],
 ) -> None:
-    """List candidate YAML dashboard files."""
+    """List editable dashboards."""
     try:
         yaml_result = await hass.async_add_executor_job(
             _list_yaml_files, hass.config.path()
@@ -140,7 +140,7 @@ async def _ws_list_files(
         dashboards = await _list_lovelace_dashboards(hass)
         result = {"files": [*dashboards, *yaml_result["files"]]}
     except Exception as err:  # noqa: BLE001 - user-facing websocket error
-        _LOGGER.exception("Failed to list YAML files")
+        _LOGGER.exception("Failed to list dashboards")
         connection.send_error(msg["id"], "list_failed", str(err))
         return
 
@@ -201,7 +201,7 @@ async def _ws_save_element(
 
 
 def _list_yaml_files(config_dir: str) -> dict[str, Any]:
-    """Return YAML files that look useful for dashboard editing."""
+    """Return YAML dashboards with editable picture-elements cards."""
     root = Path(config_dir).resolve()
     files: list[dict[str, Any]] = []
 
@@ -216,33 +216,33 @@ def _list_yaml_files(config_dir: str) -> dict[str, Any]:
         if stat.st_size > MAX_FILE_BYTES:
             continue
 
-        score = 0
-        kind = "yaml"
         try:
-            sample = path.read_text(encoding="utf-8", errors="ignore")[:200_000]
+            text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
-            sample = ""
+            text = ""
 
-        if "picture-elements" in sample:
-            score += 100
-            kind = "picture-elements"
-        if "views:" in sample:
-            score += 20
-            kind = "dashboard"
-        if "elements:" in sample:
-            score += 15
-        if "cards:" in sample:
-            score += 10
+        if "picture-elements" not in text:
+            continue
+
+        try:
+            data = _load_yaml(text)
+            card_count = len(_find_picture_cards(data))
+        except Exception:  # noqa: BLE001 - invalid or partial YAML is not a dashboard
+            card_count = 0
+
+        if card_count == 0:
+            continue
 
         files.append(
             {
                 "path": rel.as_posix(),
                 "source": "yaml",
                 "label": rel.as_posix(),
-                "kind": kind,
+                "kind": "yaml-dashboard",
+                "cards": card_count,
                 "size": stat.st_size,
                 "modified": int(stat.st_mtime),
-                "score": score,
+                "score": 100 + card_count,
             }
         )
 
@@ -273,11 +273,12 @@ async def _list_lovelace_dashboards(hass: HomeAssistant) -> list[dict[str, Any]]
         try:
             loaded = await dashboard.async_load(False)
             cards = _find_picture_cards(loaded)
-            score = 200 + (100 if cards else 0)
             card_count = len(cards)
         except Exception:  # noqa: BLE001 - auto-generated or unavailable dashboard
-            score = 190
-            card_count = 0
+            continue
+
+        if card_count == 0:
+            continue
 
         dashboards.append(
             {
@@ -287,7 +288,7 @@ async def _list_lovelace_dashboards(hass: HomeAssistant) -> list[dict[str, Any]]
                 "kind": "storage-dashboard",
                 "size": 0,
                 "modified": 0,
-                "score": score,
+                "score": 300 + card_count,
                 "cards": card_count,
             }
         )
@@ -648,7 +649,7 @@ def _element_label(element: dict[str, Any], index: int) -> str:
                 state = first.get("state") or first.get("state_not")
                 entity = _humanize_entity_id(str(first["entity"]))
                 suffix = f" {state}" if state else ""
-                return f"Podminka: {entity}{suffix}"
+                return f"Podmínka: {entity}{suffix}"
 
     card_type = element.get("card_type")
     if card_type:
@@ -672,7 +673,7 @@ def _element_label(element: dict[str, Any], index: int) -> str:
             if stack_label:
                 return stack_label
         if "calendar" in str(card_type):
-            return "Kalendar"
+            return "Kalendář"
 
         entity = element.get("entity")
         if entity:
@@ -706,18 +707,18 @@ def _label_from_custom_content(element: dict[str, Any]) -> str | None:
     lowered = haystack.lower()
 
     known_fragments = (
-        ("mhd_skola_snp", "Skola SNP MHD"),
-        ("status-line", "Stav domacnosti"),
-        ("outside-row", "Venkovni klima"),
-        ("teplota_obyvak", "Obyvak klima"),
-        ("loznice_teplota", "Loznice klima"),
-        ("senzor_kvality_vzduchu_loznice", "Loznice klima"),
+        ("mhd_skola_snp", "Škola SNP MHD"),
+        ("status-line", "Stav domácnosti"),
+        ("outside-row", "Venkovní klima"),
+        ("teplota_obyvak", "Obývák klima"),
+        ("loznice_teplota", "Ložnice klima"),
+        ("senzor_kvality_vzduchu_loznice", "Ložnice klima"),
         ("presence_multi_sensor_fp300", "Koupelna klima"),
-        ("pracka_vykon", "Pracka / susicka"),
-        ("susicka_vykon", "Pracka / susicka"),
+        ("pracka_vykon", "Pračka / sušička"),
+        ("susicka_vykon", "Pračka / sušička"),
         ("batteryids", "Baterie"),
-        ("availabilityids", "Dostupnost zarizeni"),
-        ("hosti_pin", "Nastaveni hostu"),
+        ("availabilityids", "Dostupnost zařízení"),
+        ("hosti_pin", "Nastavení hostů"),
     )
     for needle, label in known_fragments:
         if needle in lowered:
@@ -776,7 +777,7 @@ def _label_from_image(value: Any) -> str | None:
     image = str(value)
     lowered = image.lower()
     if lowered.startswith("data:image") and "fill='black'" in lowered:
-        return "Levy panel pozadi"
+        return "Levý panel pozadí"
     name = Path(image.split("?", 1)[0]).stem
     if not name:
         return None
@@ -795,11 +796,11 @@ def _humanize_icon(icon: str) -> str:
     icon_map = {
         "mdi:robot-vacuum": "Bob",
         "mdi:television": "TV",
-        "mdi:lock": "Otevirani dveri",
+        "mdi:lock": "Otevírání dveří",
         "mdi:music": "Hudba",
-        "mdi:cog": "Nastaveni",
+        "mdi:cog": "Nastavení",
         "mdi:lightning-bolt": "Energie",
-        "mdi:washing-machine": "Pracka / susicka",
+        "mdi:washing-machine": "Pračka / sušička",
     }
     if icon in icon_map:
         return icon_map[icon]
@@ -819,26 +820,26 @@ def _humanize_identifier(value: str) -> str:
     cleaned = re.sub(r"[^0-9A-Za-zÀ-ž]+", " ", value).strip()
     words = cleaned.split()
     replacements = {
-        "obyvak": "Obyvak",
-        "loznice": "Loznice",
-        "kuchyn": "Kuchyn",
+        "obyvak": "Obývák",
+        "loznice": "Ložnice",
+        "kuchyn": "Kuchyň",
         "koupelna": "Koupelna",
-        "zachod": "Zachod",
+        "zachod": "Záchod",
         "pracovna": "Pracovna",
-        "svetla": "Svetla",
-        "svetlo": "Svetlo",
-        "vypinac": "Vypinac",
-        "hosti": "Hoste",
-        "otevirani": "Otevirani",
-        "dveri": "dveri",
+        "svetla": "Světla",
+        "svetlo": "Světlo",
+        "vypinac": "Vypínač",
+        "hosti": "Hosté",
+        "otevirani": "Otevírání",
+        "dveri": "dveří",
         "mhd": "MHD",
-        "skola": "Skola",
+        "skola": "Škola",
         "snp": "SNP",
         "next": "odjezdy",
-        "time": "Cas",
-        "vykon": "vykon",
-        "susicka": "susicka",
-        "pracka": "pracka",
+        "time": "Čas",
+        "vykon": "výkon",
+        "susicka": "sušička",
+        "pracka": "pračka",
     }
     readable = [replacements.get(word.lower(), word) for word in words]
     return " ".join(readable).strip() or value

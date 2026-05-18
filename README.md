@@ -1,45 +1,44 @@
 # Visual Dashboard Editor
 
-Prvni prototyp vizualniho editoru pro YAML dashboardy v Home Assistantu. Cil je jednoduchy: misto hledani v tisicich radku YAMLu kliknes na prvek ve floorplanu/3D planu a upravis jeho zakladni parametry v UI.
+Vizuální editor pro Home Assistant dashboardy. Cíl je jednoduchý: místo hledání v tisících řádků YAML kódu klikneš na prvek ve floorplanu nebo 3D plánu a upravíš jeho základní parametry přímo v UI.
 
-Aktualni MVP je zamerene na karty typu `picture-elements`, protoze prave ty se casto pouzivaji pro 3D floorplan dashboardy. Umi nacitat jak UI/storage dashboardy vytvorene v Home Assistantu, tak klasicke YAML dashboard soubory.
+Aktuální verze je zaměřená na karty typu `picture-elements`, protože právě ty se často používají pro 3D floorplan dashboardy. Editor umí načítat UI/storage dashboardy vytvořené v Home Assistantu a také YAML dashboardy, které opravdu obsahují editovatelnou kartu `picture-elements`.
 
-## Rychla instalace
+## Rychlá Instalace
 
 [![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Paulee196&repository=visual-dashboard-editor&category=integration)
 
-Po instalaci a restartu muzes integraci rovnou pridat tady:
+Po instalaci a restartu můžeš integraci rovnou přidat tady:
 
 [![Open your Home Assistant instance and start setting up Visual Dashboard Editor.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=visual_dashboard_editor)
 
-## Co to umi ted
+## Co To Umí Teď
 
-- prida do Home Assistantu sidebar panel `Visual Dashboard Editor`
+- přidá do Home Assistantu sidebar panel `Visual Dashboard Editor`
 - najde UI/storage dashboardy v Home Assistantu
-- najde YAML soubory v HA config slozce
-- vyhleda v nich `picture-elements` karty
-- vykresli zjednodusene preview s pozicemi prvku
-- po kliknuti na prvek zobrazi inspector
-- umi upravit `entity`, `icon`, `image`, `style.left`, `style.top`, `style.width`, `style.height`, `style.opacity`, `style.z-index` a `style.transform`
-- umi prvek posouvat mysi primo v preview
-- umi zobrazit a ulozit YAML fragment vybraneho prvku
-- pred ulozenim dela backup do `.visual_dashboard_editor_backups`
+- najde YAML dashboardy s kartou `picture-elements`
+- vykreslí reálný náhled Lovelace dashboardu s editovací vrstvou
+- po kliknutí na prvek zobrazí inspector
+- umí upravit `entity`, `icon`, `image`, `style.left`, `style.top`, `style.width`, `style.height`, `style.opacity`, `style.z-index` a `style.transform`
+- umí prvek posouvat myší přímo v náhledu
+- umí zobrazit a uložit YAML fragment vybraného prvku
+- před uložením dělá backup do `.visual_dashboard_editor_backups`
 
-## Instalace pro test
+## Instalace Pro Test
 
-### Pres HACS jako custom repository
+### Přes HACS Jako Custom Repository
 
-1. Klikni na tlacitko v sekci `Rychla instalace`, nebo v HACS pridej repozitar jako `Integration`.
+1. Klikni na tlačítko v sekci `Rychlá Instalace`, nebo v HACS přidej repozitář jako `Integration`.
 2. Nainstaluj `Visual Dashboard Editor`.
 3. Restartuj Home Assistant.
-4. V `Settings -> Devices & services -> Add integration` pridej `Visual Dashboard Editor`.
-5. V sidebaru otevri `Visual Dashboard Editor`.
+4. V `Nastavení -> Zařízení a služby -> Přidat integraci` přidej `Visual Dashboard Editor`.
+5. V sidebaru otevři `Visual Dashboard Editor`.
 
-### Rucne
+### Ručně
 
-1. Zkopiruj slozku `custom_components/visual_dashboard_editor` do `/config/custom_components/visual_dashboard_editor`.
+1. Zkopíruj složku `custom_components/visual_dashboard_editor` do `/config/custom_components/visual_dashboard_editor`.
 2. Restartuj Home Assistant.
-3. Pridej integraci v UI, nebo do `configuration.yaml` vloz:
+3. Přidej integraci v UI, nebo do `configuration.yaml` vlož:
 
 ```yaml
 visual_dashboard_editor:
@@ -47,34 +46,33 @@ visual_dashboard_editor:
 
 4. Restartuj Home Assistant.
 
-## Jak to pouzit
+## Jak To Použít
 
-1. Otevri sidebar panel `Visual Dashboard Editor`.
-2. Vyber UI dashboard nebo YAML soubor dashboardu.
-3. Klikni `Nacist`.
-4. Vyber `picture-elements` kartu, pokud jich je v souboru vic.
+1. Otevři sidebar panel `Visual Dashboard Editor`.
+2. Vyber UI dashboard nebo YAML dashboard.
+3. Klikni na `Načíst`.
+4. Vyber `picture-elements` kartu, pokud jich je v dashboardu víc.
 5. Klikni na prvek ve floorplanu.
-6. Uprav hodnoty v inspectoru nebo prvek posun mysi.
-7. Klikni `Ulozit`.
+6. Uprav hodnoty v inspectoru nebo prvek posuň myší.
+7. Klikni na `Uložit`.
 
-## Dulezite limity MVP
+## Důležité Limity
 
-- Storage dashboardy se ukladaji pres Home Assistant Lovelace runtime. Backup se uklada jako JSON.
-- Preview je zjednodusene. Neni to plny Home Assistant renderer, takze custom card vnorene uvnitr prvku se zatim nevykresli dokonale.
-- Ukladani YAML souboru se snazi zachovat zbytek souboru pres `ruamel.yaml`, ale upraveny element muze ztratit cast rucniho formatovani nebo komentaru primo uvnitr daneho elementu.
-- Zatim nehleda prvek kliknutim v normalnim dashboardu. Je to samostatny editor panel. Floating tlacitko do bezneho dashboardu je dalsi krok.
+- Storage dashboardy se ukládají přes Home Assistant Lovelace runtime. Backup se ukládá jako JSON.
+- YAML dashboardy se v seznamu zobrazují jen tehdy, když obsahují kartu `picture-elements`.
+- Ukládání YAML souboru se snaží zachovat zbytek souboru přes `ruamel.yaml`, ale upravený element může ztratit část ručního formátování nebo komentářů přímo uvnitř daného elementu.
+- Zatím nehledá prvek kliknutím v normálním dashboardu. Je to samostatný editor panel. Floating tlačítko do běžného dashboardu je další možný krok.
 
-## Proc takhle
+## Proč Takhle
 
-Home Assistant umi vlastni panely a vlastni karty pres frontend custom elements. Custom karty maji vlastni graficke editory, ale ty funguji pro jednu konkretni kartu. Tohle MVP jde jinou cestou: backend nacte existujici YAML, najde `picture-elements` konfiguraci a frontend nad ni postavi specializovany visual inspector.
+Home Assistant umí vlastní panely a vlastní karty přes frontend custom elements. Custom karty mají vlastní grafické editory, ale ty fungují pro jednu konkrétní kartu. Tenhle editor jde jinou cestou: backend načte existující dashboard, najde `picture-elements` konfiguraci a frontend nad ní postaví specializovaný visual inspector.
 
-## Plan dalsich kroku
+## Plán Dalších Kroků
 
-- presnejsi preview se skutecnym pomerem stran obrazku
-- resize handles primo v preview
+- přesnější měření mobilních viewportů
+- resize handles přímo v náhledu
 - undo/redo
-- diff pred ulozenim
-- vyhledavani prvku podle entity
+- diff před uložením
+- vyhledávání prvků podle entity
 - podpora `custom:config-template-card`
-- volitelny frontend resource, ktery prida male `Visual edit` tlacitko primo do dashboardu
-- podpora storage dashboardu pres Lovelace API
+- volitelný frontend resource, který přidá malé `Visual edit` tlačítko přímo do dashboardu

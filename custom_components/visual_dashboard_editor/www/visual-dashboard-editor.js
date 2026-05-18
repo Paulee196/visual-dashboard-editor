@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.14";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v11";
+const UI_VERSION = "0.2.15";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v12";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -51,7 +51,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   async callWS(message) {
     if (!this.hass) {
-      throw new Error("Home Assistant API jeste neni pripravene.");
+      throw new Error("Home Assistant API ještě není připravené.");
     }
     if (this.hass.callWS) {
       return this.hass.callWS(message);
@@ -67,8 +67,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       const result = await this.callWS({ type: `${DOMAIN}/list_files` });
       this.state.files = result.files || [];
       this.state.status = this.state.files.length
-        ? "Vyber UI dashboard nebo YAML soubor a nacti preview."
-        : "Nenasel jsem zadny UI dashboard ani vhodny YAML soubor.";
+        ? "Vyber dashboard a načti náhled."
+        : "Nenašel jsem žádný dashboard s kartou picture-elements.";
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -95,8 +95,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.cardIndex = 0;
       this.state.dirty = false;
       this.state.status = this.state.cards.length
-        ? `Nacteno: ${this.state.cards.length} picture-elements karta/karet.`
-        : "Dashboard je nacteny, ale nenasel jsem picture-elements kartu.";
+        ? `Načteno: ${this.state.cards.length} picture-elements karta/karet.`
+        : "Dashboard je načtený, ale nenašel jsem picture-elements kartu.";
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -132,7 +132,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.selectedElementPath = [...element.path];
     this.state.advancedText = element.fragment || "";
     this.state.advancedDirty = false;
-    this.state.status = `Vybrano: ${this.displayLabel(element)}`;
+    this.state.status = `Vybráno: ${this.displayLabel(element)}`;
     return element;
   }
 
@@ -161,7 +161,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       target[key] = value;
     }
     this.state.dirty = true;
-    this.state.status = "Zmeny jsou pripravene k ulozeni.";
+    this.state.status = "Změny jsou připravené k uložení.";
     this.render();
   }
 
@@ -197,8 +197,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.dirty = false;
       this.state.advancedDirty = false;
       this.state.status = result.backup_path
-        ? `Ulozeno. Backup: ${result.backup_path}`
-        : "Ulozeno.";
+        ? `Uloženo. Backup: ${result.backup_path}`
+        : "Uloženo.";
       const nextElement = this.currentElement();
       this.state.advancedText = nextElement ? nextElement.fragment || "" : "";
     } catch (err) {
@@ -246,7 +246,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       element.config.style.left = leftText;
       element.config.style.top = topText;
       this.state.dirty = true;
-      this.state.status = "Prvek posunut, jeste ulozit.";
+      this.state.status = "Prvek posunut, ještě uložit.";
 
       const node = this.shadowRoot.querySelector(
         `.plan-element[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"]`
@@ -278,6 +278,59 @@ class VisualDashboardEditorPanel extends HTMLElement {
       left: ((event.clientX - rect.left) / width) * 100,
       top: ((event.clientY - rect.top) / height) * 100,
     };
+  }
+
+  hitTestElement(event) {
+    const nodes = Array.from(this.shadowRoot.querySelectorAll(".plan-element"));
+    const x = event.clientX;
+    const y = event.clientY;
+    const candidates = [];
+
+    for (const node of nodes) {
+      if (node.classList.contains("click-through")) continue;
+      const rect = node.getBoundingClientRect();
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) continue;
+
+      const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
+      const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
+      const element = this.state.cards[cardIndex]?.elements?.[elementIndex];
+      if (!element) continue;
+
+      const area = Math.max(rect.width * rect.height, 1);
+      const centerDistance = Math.hypot(
+        x - (rect.left + rect.width / 2),
+        y - (rect.top + rect.height / 2)
+      );
+      const zIndex = Number.parseFloat(node.style.zIndex || "0") || 0;
+      const kindScore = this.hitTestKindScore(element, node);
+      const score = kindScore + zIndex * 100 + 100000 / area - centerDistance * 0.02 + elementIndex * 0.001;
+
+      candidates.push({ cardIndex, elementIndex, node, score });
+    }
+
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0] || null;
+  }
+
+  hitTestKindScore(element, node) {
+    if (node.classList.contains("element-hotspot")) return 0;
+    if (node.classList.contains("element-widget")) return 6000;
+    if (node.classList.contains("element-calendar")) return 5600;
+    if (node.classList.contains("element-stack")) return 5400;
+    if (node.classList.contains("element-icon")) return 5200;
+    if (node.classList.contains("element-label")) return 5000;
+    if (node.classList.contains("element-image")) return 3000;
+    return this.isTransparentCard(element.config || {}) ? 0 : 4000;
+  }
+
+  setHoveredElement(hit) {
+    const key = hit ? `${hit.cardIndex}:${hit.elementIndex}` : "";
+    if (this._hoveredElementKey === key) return;
+    this._hoveredElementKey = key;
+    this.shadowRoot.querySelectorAll(".plan-element.hovered").forEach((node) => {
+      node.classList.remove("hovered");
+    });
+    hit?.node?.classList.add("hovered");
   }
 
   clamp(value, min, max) {
@@ -421,7 +474,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const image = String(value);
     const lowered = image.toLowerCase();
     if (lowered.startsWith("data:image") && lowered.includes("fill='black'")) {
-      return "Levy panel";
+      return "Levý panel";
     }
     const file = image.split("?")[0].split("/").pop() || "";
     const stem = file.replace(/\.[^.]+$/, "").replace(/^planek[-_]?/i, "");
@@ -430,15 +483,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   labelFromIcon(icon) {
     const map = {
-      "mdi:robot-vacuum": "Vysavac Bob",
+      "mdi:robot-vacuum": "Vysavač Bob",
       "mdi:television": "TV",
-      "mdi:lock": "Otevirani dveri",
+      "mdi:lock": "Otevírání dveří",
       "mdi:music": "Hudba",
-      "mdi:cog": "Nastaveni",
+      "mdi:cog": "Nastavení",
       "mdi:lightning-bolt": "Energie",
-      "mdi:washing-machine": "Pracka / susicka",
-      "mdi:lightbulb-on": "Svetlo",
-      "mdi:lightbulb-outline": "Svetlo",
+      "mdi:washing-machine": "Pračka / sušička",
+      "mdi:lightbulb-on": "Světlo",
+      "mdi:lightbulb-outline": "Světlo",
     };
     return map[icon] || this.humanizeId(String(icon).replace(/^mdi:/, ""));
   }
@@ -449,23 +502,23 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const joined = ids.join(" ").toLowerCase();
     const json = JSON.stringify(config).toLowerCase();
 
-    if (config.entity === "sensor.time" || joined.includes("sensor.time")) return "Cas a datum";
-    if (cardType.includes("calendar") || joined.includes("calendar.")) return "Kalendar";
+    if (config.entity === "sensor.time" || joined.includes("sensor.time")) return "Čas a datum";
+    if (cardType.includes("calendar") || joined.includes("calendar.")) return "Kalendář";
     if (
       json.includes("stav dom") ||
       json.includes("status-line") ||
       json.includes("trackedavailability") ||
       json.includes("messages.push")
     ) {
-      return "Stav domacnosti";
+      return "Stav domácnosti";
     }
-    if (joined.includes("mhd_skola_snp") || json.includes("skola snp")) return "Skola SNP MHD";
-    if (joined.includes("vacuum.bob") || json.includes("vacuum.bob")) return "Vysavac Bob";
-    if (joined.includes("pracka") || joined.includes("susicka")) return "Pracka / susicka";
+    if (joined.includes("mhd_skola_snp") || json.includes("skola snp")) return "Škola SNP MHD";
+    if (joined.includes("vacuum.bob") || json.includes("vacuum.bob")) return "Vysavač Bob";
+    if (joined.includes("pracka") || joined.includes("susicka")) return "Pračka / sušička";
     if (joined.includes("person.pavel") || joined.includes("person.misa")) return "Osoby";
     if (joined.includes("teplota") || joined.includes("humidity") || joined.includes("vlhkost") || joined.includes("co2")) {
-      if (joined.includes("obyvak")) return "Obyvak klima";
-      if (joined.includes("loznice")) return "Loznice klima";
+      if (joined.includes("obyvak")) return "Obývák klima";
+      if (joined.includes("loznice")) return "Ložnice klima";
       if (joined.includes("fp300") || joined.includes("koupelna")) return "Koupelna klima";
       return "Teplota / klima";
     }
@@ -514,26 +567,26 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   humanizeId(value) {
     const replacements = {
-      obyvak: "Obyvak",
-      loznice: "Loznice",
-      kuchyn: "Kuchyn",
+      obyvak: "Obývák",
+      loznice: "Ložnice",
+      kuchyn: "Kuchyň",
       koupelna: "Koupelna",
-      zachod: "Zachod",
+      zachod: "Záchod",
       pracovna: "Pracovna",
-      svetla: "Svetla",
-      svetlo: "Svetlo",
-      vypinac: "Vypinac",
-      hosti: "Hoste",
-      otevirani: "Otevirani",
-      dveri: "dveri",
+      svetla: "Světla",
+      svetlo: "Světlo",
+      vypinac: "Vypínač",
+      hosti: "Hosté",
+      otevirani: "Otevírání",
+      dveri: "dveří",
       mhd: "MHD",
-      skola: "Skola",
+      skola: "Škola",
       snp: "SNP",
       next: "odjezdy",
-      time: "Cas",
-      vykon: "vykon",
-      pracka: "pracka",
-      susicka: "susicka",
+      time: "Čas",
+      vykon: "výkon",
+      pracka: "pračka",
+      susicka: "sušička",
     };
     return String(value || "")
       .replace(/[^0-9A-Za-zÀ-ž]+/g, " ")
@@ -759,7 +812,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       stage.classList.add("real-failed");
       stage.style.height = "";
       if (error) {
-        error.textContent = `Realne vykresleni se nepovedlo, pouzivam nouzovy nahled: ${
+        error.textContent = `Reálné vykreslení se nepovedlo, používám nouzový náhled: ${
           err?.message || err
         }`;
       }
@@ -770,7 +823,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   renderPreview() {
     const card = this.currentCard();
     if (!card) {
-      return `<div class="empty-state">Vyber UI dashboard nebo YAML soubor s picture-elements kartou.</div>`;
+      return `<div class="empty-state">Vyber dashboard s kartou picture-elements.</div>`;
     }
     const image = this.imageUrl(card.image);
     const dashboardUrl = this.dashboardPreviewUrl(card.preview_url);
@@ -826,7 +879,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
             )
             .join("")}
         </select>
-        <select id="previewSize" title="Velikost nahledu">
+        <select id="previewSize" title="Velikost náhledu">
           ${Object.entries(presetGroups)
             .map(([group, presets]) => {
               const options = presets
@@ -841,29 +894,29 @@ class VisualDashboardEditorPanel extends HTMLElement {
             })
             .join("")}
         </select>
-        <select id="previewOrientation" title="Orientace nahledu">
-          <option value="portrait" ${this.state.previewOrientation === "portrait" ? "selected" : ""}>Na vysku</option>
-          <option value="landscape" ${this.state.previewOrientation === "landscape" ? "selected" : ""}>Na sirku</option>
+        <select id="previewOrientation" title="Orientace náhledu">
+          <option value="portrait" ${this.state.previewOrientation === "portrait" ? "selected" : ""}>Na výšku</option>
+          <option value="landscape" ${this.state.previewOrientation === "landscape" ? "selected" : ""}>Na šířku</option>
         </select>
-        <select id="previewScaleMode" title="Meritko nahledu">
-          <option value="fit" ${this.state.previewScaleMode === "fit" ? "selected" : ""}>Vejit cele</option>
+        <select id="previewScaleMode" title="Měřítko náhledu">
+          <option value="fit" ${this.state.previewScaleMode === "fit" ? "selected" : ""}>Vejít celé</option>
           <option value="actual" ${this.state.previewScaleMode === "actual" ? "selected" : ""}>1:1 CSS px</option>
         </select>
-        <span>${dimensions.width} x ${dimensions.height} CSS px - ${visibleCount} prvku s pozici</span>
+        <span>${dimensions.width} x ${dimensions.height} CSS px - ${visibleCount} prvků s pozicí</span>
       </div>
       <div class="preview-frame scale-${this.escape(this.state.previewScaleMode)}">
         <div id="previewFit" class="preview-fit">
           <div class="plan-stage" style="width:${dimensions.width}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
             ${
               dashboardUrl
-                ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="Oficialni nahled dashboardu"></iframe>`
+                ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="Oficiální náhled dashboardu"></iframe>`
                 : `<div id="realCardHost" class="real-card-host"></div>`
             }
             <div class="fallback-preview">
               ${
                 image
                   ? `<img class="plan-bg" src="${this.escape(image)}" alt="">`
-                  : `<div class="missing-bg">Karta nema obrazek v poli image.</div>`
+                  : `<div class="missing-bg">Karta nemá obrázek v poli image.</div>`
               }
             </div>
             <div class="edit-overlay">
@@ -882,7 +935,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       return `
         <section class="inspector">
           <h2>Inspector</h2>
-          <p class="muted">Klikni na prvek v preview. Tady se objevi jeho pozice, velikost a kodovy fragment.</p>
+          <p class="muted">Klikni na prvek v náhledu. Tady se objeví jeho pozice, velikost a kódový fragment.</p>
         </section>
       `;
     }
@@ -894,9 +947,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
         <div class="inspector-head">
           <div>
             <h2>${this.escape(this.displayLabel(element))}</h2>
-            <p>${this.escape(config.card_type || config.type || "element")}${element.line ? ` - radek ${element.line}` : ""}</p>
+            <p>${this.escape(config.card_type || config.type || "element")}${element.line ? ` - řádek ${element.line}` : ""}</p>
           </div>
-          <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>Ulozit</button>
+          <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>Uložit</button>
         </div>
 
         <div class="field-grid">
@@ -909,23 +962,23 @@ class VisualDashboardEditorPanel extends HTMLElement {
             <input data-field="icon" value="${this.escape(config.icon || "")}" placeholder="mdi:lightbulb">
           </label>
           <label>
-            Left %
+            Vlevo %
             <input data-percent-field="style.left" type="number" step="0.1" value="${this.percentToNumber(style.left)}">
           </label>
           <label>
-            Top %
+            Nahoře %
             <input data-percent-field="style.top" type="number" step="0.1" value="${this.percentToNumber(style.top)}">
           </label>
           <label>
-            Width %
+            Šířka %
             <input data-percent-field="style.width" type="number" step="0.1" value="${this.percentToNumber(style.width)}">
           </label>
           <label>
-            Height %
+            Výška %
             <input data-percent-field="style.height" type="number" step="0.1" value="${this.percentToNumber(style.height)}">
           </label>
           <label>
-            Opacity
+            Průhlednost
             <input data-number-field="style.opacity" type="number" step="0.05" min="0" max="1" value="${this.escape(style.opacity || "")}">
           </label>
           <label>
@@ -945,11 +998,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
         </label>
 
         <details class="advanced" ${this.state.advancedDirty ? "open" : ""}>
-          <summary>Pokrocily YAML fragment</summary>
+          <summary>Pokročilý YAML fragment</summary>
           <textarea id="advancedText" spellcheck="false">${this.escape(this.state.advancedText)}</textarea>
           <div class="advanced-actions">
-            <button id="openAdvancedModal" type="button">Zvetsit editor</button>
-            <button id="saveAdvanced" type="button" ${this.state.loading ? "disabled" : ""}>Ulozit YAML fragment</button>
+            <button id="openAdvancedModal" type="button">Zvětšit editor</button>
+            <button id="saveAdvanced" type="button" ${this.state.loading ? "disabled" : ""}>Uložit YAML fragment</button>
           </div>
         </details>
       </section>
@@ -962,17 +1015,17 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
     return `
       <div id="advancedModalBackdrop" class="modal-backdrop">
-        <section class="yaml-modal" role="dialog" aria-modal="true" aria-label="Pokrocily YAML fragment">
+        <section class="yaml-modal" role="dialog" aria-modal="true" aria-label="Pokročilý YAML fragment">
           <div class="yaml-modal-head">
             <div>
               <h2>${this.escape(this.displayLabel(element))}</h2>
-              <p>Pokrocily YAML fragment</p>
+              <p>Pokročilý YAML fragment</p>
             </div>
-            <button id="closeAdvancedModal" type="button">Zavrit</button>
+            <button id="closeAdvancedModal" type="button">Zavřít</button>
           </div>
           <textarea id="advancedModalText" spellcheck="false">${this.escape(this.state.advancedText)}</textarea>
           <div class="yaml-modal-actions">
-            <button id="saveAdvancedModal" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>Ulozit YAML fragment</button>
+            <button id="saveAdvancedModal" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>Uložit YAML fragment</button>
           </div>
         </section>
       </div>
@@ -998,7 +1051,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
                     ? file.cards
                       ? ` - ${file.cards} karet`
                       : " - UI"
-                    : " - YAML";
+                    : file.cards
+                      ? ` - ${file.cards} karet`
+                      : " - YAML dashboard";
                 return (
                 `<option value="${this.escape(file.path)}" ${
                   file.path === this.state.selectedFile ? "selected" : ""
@@ -1010,8 +1065,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
             )
             .join("")}
         </select>
-        <button id="loadFile" class="primary" ${!this.state.selectedFile ? "disabled" : ""}>Nacist</button>
-        <p class="muted">Editor umi UI/storage dashboardy a YAML soubory v HA configu. Hleda karty typu picture-elements.</p>
+        <button id="loadFile" class="primary" ${!this.state.selectedFile ? "disabled" : ""}>Načíst</button>
+        <p class="muted">Editor zobrazuje jen dashboardy, ve kterých našel kartu picture-elements.</p>
         ${card ? this.renderElementList() : ""}
       </aside>
     `;
@@ -1068,8 +1123,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
             <p>${this.escape(this.state.status)}</p>
           </div>
           <span class="pill">v${UI_VERSION}</span>
-          ${this.state.loading ? `<span class="pill">Pracuju...</span>` : ""}
-          ${this.state.dirty || this.state.advancedDirty ? `<span class="pill dirty">Neulozeno</span>` : ""}
+          ${this.state.loading ? `<span class="pill">Pracuji...</span>` : ""}
+          ${this.state.dirty || this.state.advancedDirty ? `<span class="pill dirty">Neuloženo</span>` : ""}
         </header>
         ${this.state.error ? `<div class="error">${this.escape(this.state.error)}</div>` : ""}
         <main class="layout">
@@ -1133,18 +1188,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.render();
     });
 
-    this.shadowRoot.querySelectorAll(".plan-element").forEach((node) => {
-      node.addEventListener("pointerdown", (event) => {
-        const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
-        const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
-        this.startDrag(event, cardIndex, elementIndex);
-      });
-      node.addEventListener("click", (event) => {
-        event.preventDefault();
-        const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
-        const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
-        this.selectElement(cardIndex, elementIndex);
-      });
+    const overlay = this.shadowRoot.querySelector(".edit-overlay");
+    overlay?.addEventListener("pointermove", (event) => {
+      this.setHoveredElement(this.hitTestElement(event));
+    });
+    overlay?.addEventListener("pointerleave", () => {
+      this.setHoveredElement(null);
+    });
+    overlay?.addEventListener("pointerdown", (event) => {
+      const hit = this.hitTestElement(event);
+      if (!hit) return;
+      this.setHoveredElement(hit);
+      this.startDrag(event, hit.cardIndex, hit.elementIndex);
     });
 
     this.shadowRoot.querySelectorAll(".element-list-item").forEach((node) => {
@@ -1199,12 +1254,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.shadowRoot.querySelector("#advancedText")?.addEventListener("input", (event) => {
       this.state.advancedText = event.target.value;
       this.state.advancedDirty = true;
-      this.state.status = "YAML fragment je upraveny, jeste ulozit.";
+      this.state.status = "YAML fragment je upravený, ještě uložit.";
     });
     this.shadowRoot.querySelector("#advancedModalText")?.addEventListener("input", (event) => {
       this.state.advancedText = event.target.value;
       this.state.advancedDirty = true;
-      this.state.status = "YAML fragment je upraveny, jeste ulozit.";
+      this.state.status = "YAML fragment je upravený, ještě uložit.";
       const inline = this.shadowRoot.querySelector("#advancedText");
       if (inline) inline.value = event.target.value;
     });
@@ -1590,7 +1645,8 @@ const styles = `
     position: absolute;
     inset: 0;
     z-index: 2;
-    pointer-events: none;
+    cursor: crosshair;
+    pointer-events: auto;
   }
 
   .preview-render-error {
@@ -1624,7 +1680,7 @@ const styles = `
     box-shadow: none;
     overflow: visible;
     touch-action: none;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .plan-element.click-through {
@@ -1711,18 +1767,18 @@ const styles = `
     transform: translate(-50%, 3px);
   }
 
-  .plan-element:hover .element-chip,
+  .plan-element.hovered .element-chip,
   .plan-element.selected .element-chip {
     opacity: 1;
     transform: translateY(0);
   }
 
-  .element-marker:hover .element-chip,
+  .element-marker.hovered .element-chip,
   .element-marker.selected .element-chip {
     transform: translate(-50%, 5px);
   }
 
-  .element-area:hover {
+  .element-area.hovered {
     background: transparent;
   }
 

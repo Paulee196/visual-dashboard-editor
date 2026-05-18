@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.15
+
+- Replace native overlay button hit-testing with a custom point picker that prefers visible widgets over large invisible hotspots.
+- Limit the dashboard picker to UI dashboards and YAML dashboards that actually contain editable `picture-elements` cards.
+- Polish visible Czech UI text with diacritics.
+
 ## 0.2.14
 
 - Make preview element selection more accurate by letting YAML `pointer-events: none` layers pass clicks through in the editor overlay.

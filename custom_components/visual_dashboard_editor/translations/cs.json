@@ -4,11 +4,11 @@
     "step": {
       "user": {
         "title": "Visual Dashboard Editor",
-        "description": "Prida vizualni editor pro YAML dashboardy v Home Assistantu."
+        "description": "Přidá vizuální editor pro dashboardy v Home Assistantu."
       }
     },
     "abort": {
-      "already_configured": "Visual Dashboard Editor uz je nakonfigurovany."
+      "already_configured": "Visual Dashboard Editor už je nakonfigurovaný."
     }
   }
 }
