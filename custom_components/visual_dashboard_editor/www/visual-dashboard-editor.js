@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.16";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v13";
+const UI_VERSION = "0.2.17";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v14";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -47,6 +47,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener("resize", this._onResize);
     this._frameResizeObserver?.disconnect();
+    this._overlaySyncTimer && clearInterval(this._overlaySyncTimer);
   }
 
   async callWS(message) {
@@ -723,6 +724,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       stage?.classList.add("real-ready");
       stage?.classList.remove("real-failed");
       requestAnimationFrame(() => this.syncPreviewFit());
+      this.scheduleOverlaySync();
       setTimeout(() => this.syncPreviewFit(), 200);
       return;
     }
@@ -751,6 +753,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       stage.style.height = "";
       if (error) error.textContent = "";
       requestAnimationFrame(() => this.syncPreviewFit());
+      this.scheduleOverlaySync();
       setTimeout(() => this.syncPreviewFit(), 80);
       setTimeout(() => this.syncPreviewFit(), 400);
     } catch (err) {
@@ -764,7 +767,107 @@ class VisualDashboardEditorPanel extends HTMLElement {
         }`;
       }
       requestAnimationFrame(() => this.syncPreviewFit());
+      this.resetOverlayBounds();
     }
+  }
+
+  scheduleOverlaySync() {
+    this._overlaySyncTimer && clearInterval(this._overlaySyncTimer);
+    const run = () => this.syncOverlayToRenderedCard();
+    requestAnimationFrame(run);
+    setTimeout(run, 80);
+    setTimeout(run, 250);
+    setTimeout(run, 700);
+    this._overlaySyncTimer = setInterval(run, 1200);
+  }
+
+  syncOverlayToRenderedCard() {
+    const stage = this.shadowRoot?.querySelector(".plan-stage");
+    const overlay = this.shadowRoot?.querySelector(".edit-overlay");
+    if (!stage || !overlay) return;
+
+    const iframe = this.shadowRoot.querySelector(".dashboard-frame");
+    if (iframe) {
+      const rect = this.renderedPictureCardRectFromIframe(iframe);
+      if (rect) {
+        this.applyOverlayBounds(overlay, rect.left, rect.top, rect.width, rect.height);
+        return;
+      }
+    }
+
+    const host = this.shadowRoot.querySelector("#realCardHost");
+    const renderedCard = host?.firstElementChild;
+    if (renderedCard) {
+      const stageRect = stage.getBoundingClientRect();
+      const cardRect = renderedCard.getBoundingClientRect();
+      const scale = this.previewStageScale(stage);
+      if (cardRect.width > 10 && cardRect.height > 10) {
+        this.applyOverlayBounds(
+          overlay,
+          (cardRect.left - stageRect.left) / scale,
+          (cardRect.top - stageRect.top) / scale,
+          cardRect.width / scale,
+          cardRect.height / scale
+        );
+        return;
+      }
+    }
+
+    this.resetOverlayBounds();
+  }
+
+  previewStageScale(stage) {
+    const value = Number.parseFloat(
+      getComputedStyle(stage).getPropertyValue("--preview-scale")
+    );
+    return Number.isFinite(value) && value > 0 ? value : 1;
+  }
+
+  renderedPictureCardRectFromIframe(iframe) {
+    let doc;
+    try {
+      doc = iframe.contentDocument;
+    } catch (_err) {
+      return null;
+    }
+    if (!doc) return null;
+
+    const target = this.deepQuery(doc, "hui-picture-elements-card");
+    if (!target) return null;
+
+    const rect = target.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return null;
+    return rect;
+  }
+
+  deepQuery(root, selector) {
+    const direct = root.querySelector?.(selector);
+    if (direct) return direct;
+
+    const nodes = root.querySelectorAll?.("*") || [];
+    for (const node of nodes) {
+      if (node.shadowRoot) {
+        const found = this.deepQuery(node.shadowRoot, selector);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  applyOverlayBounds(overlay, left, top, width, height) {
+    overlay.style.left = `${Math.round(left)}px`;
+    overlay.style.top = `${Math.round(top)}px`;
+    overlay.style.width = `${Math.round(width)}px`;
+    overlay.style.height = `${Math.round(height)}px`;
+  }
+
+  resetOverlayBounds() {
+    const overlay = this.shadowRoot?.querySelector(".edit-overlay");
+    if (!overlay) return;
+    overlay.style.left = "0";
+    overlay.style.top = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
   }
 
   renderPreview() {
@@ -1590,7 +1693,10 @@ const styles = `
 
   .edit-overlay {
     position: absolute;
-    inset: 0;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
     z-index: 2;
     pointer-events: none;
   }

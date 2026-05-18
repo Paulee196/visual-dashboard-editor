@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.17
+
+- Align invisible editor hitboxes to the actually rendered `picture-elements` card inside the Lovelace iframe instead of the whole preview viewport.
+- Keep the overlay bounds in sync while the iframe loads so right-side widgets such as transit schedules use the correct target area.
+
 ## 0.2.16
 
 - Restore native per-element overlay hit targets from the earlier framed editor, but keep the hitbox borders invisible.
