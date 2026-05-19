@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.19
+
+- Add frontend localization that follows the Home Assistant language setting via `hass.locale.language`.
+- Localize the editor UI, status messages, preview controls, inspector labels and generated element names for Czech, English and German, with English fallback for unsupported languages.
+- Add English and German config flow translations.
+
 ## 0.2.18
 
 - Measure editor hitboxes from Home Assistant's rendered `.element` nodes inside `picture-elements`, so large auto-height widgets such as calendar, transit and status panels are clickable across their full visible area.

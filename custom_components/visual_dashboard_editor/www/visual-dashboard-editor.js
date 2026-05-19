@@ -1,6 +1,279 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.18";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v15";
+const UI_VERSION = "0.2.19";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v16";
+
+const TRANSLATIONS = {
+  cs: {
+    "status.selectDashboard": "Vyber dashboard.",
+    "status.selectAndLoad": "Vyber dashboard a načti náhled.",
+    "status.noDashboardsFound": "Nenašel jsem žádný dashboard s kartou picture-elements.",
+    "status.loadedCards": "Načteno: {count} picture-elements karta/karet.",
+    "status.loadedNoPicture": "Dashboard je načtený, ale nenašel jsem picture-elements kartu.",
+    "status.selected": "Vybráno: {name}",
+    "status.changesReady": "Změny jsou připravené k uložení.",
+    "status.savedWithBackup": "Uloženo. Backup: {path}",
+    "status.saved": "Uloženo.",
+    "status.moved": "Prvek posunut, ještě uložit.",
+    "status.yamlDirty": "YAML fragment je upravený, ještě uložit.",
+    "status.realRenderFailed": "Reálné vykreslení se nepovedlo, používám nouzový náhled: {error}",
+    "error.apiNotReady": "Home Assistant API ještě není připravené.",
+    "ui.working": "Pracuji...",
+    "ui.unsaved": "Neuloženo",
+    "ui.previewSize": "Velikost náhledu",
+    "ui.previewOrientation": "Orientace náhledu",
+    "ui.portrait": "Na výšku",
+    "ui.landscape": "Na šířku",
+    "ui.previewScale": "Měřítko náhledu",
+    "ui.fitWhole": "Vejít celé",
+    "ui.actualCssPx": "1:1 CSS px",
+    "ui.positionedCount": "{width} x {height} CSS px - {count} prvků s pozicí",
+    "ui.officialPreview": "Oficiální náhled dashboardu",
+    "ui.missingImage": "Karta nemá obrázek v poli image.",
+    "ui.emptyDashboard": "Vyber dashboard s kartou picture-elements.",
+    "ui.inspector": "Inspector",
+    "ui.inspectorHelp": "Klikni na prvek v náhledu. Tady se objeví jeho pozice, velikost a kódový fragment.",
+    "ui.line": "řádek {line}",
+    "ui.save": "Uložit",
+    "ui.entity": "Entity",
+    "ui.icon": "Ikona",
+    "ui.leftPercent": "Vlevo %",
+    "ui.topPercent": "Nahoře %",
+    "ui.widthPercent": "Šířka %",
+    "ui.heightPercent": "Výška %",
+    "ui.opacity": "Průhlednost",
+    "ui.zIndex": "Z-index",
+    "ui.transform": "Transform",
+    "ui.image": "Image",
+    "ui.advancedYaml": "Pokročilý YAML fragment",
+    "ui.expandEditor": "Zvětšit editor",
+    "ui.saveYamlFragment": "Uložit YAML fragment",
+    "ui.close": "Zavřít",
+    "ui.dashboards": "Dashboardy",
+    "ui.refreshList": "Obnovit",
+    "ui.refreshListTitle": "Obnovit seznam",
+    "ui.chooseDashboard": "Vyber dashboard...",
+    "ui.load": "Načíst",
+    "ui.dashboardHelp": "Editor zobrazuje jen dashboardy, ve kterých našel kartu picture-elements.",
+    "ui.elements": "Prvky",
+    "ui.searchElement": "Hledat prvek",
+    "file.cards": "{count} karet",
+    "file.ui": "UI",
+    "file.uiDashboard": "UI dashboard",
+    "file.yamlDashboard": "YAML dashboard",
+    "group.phones": "Telefony",
+    "group.tablets": "Tablety",
+    "group.displays": "Obrazovky",
+    "preset.compactTablet": "kompaktní tablet",
+    "preset.notebook": "notebook",
+    "preset.monitorFullHd": "monitor Full HD",
+    "preset.monitorQhd": "monitor QHD",
+    "preset.monitor4k": "monitor 4K",
+    "label.leftPanel": "Levý panel",
+    "label.vacuumBob": "Vysavač Bob",
+    "label.tv": "TV",
+    "label.doorOpening": "Otevírání dveří",
+    "label.music": "Hudba",
+    "label.settings": "Nastavení",
+    "label.energy": "Energie",
+    "label.washerDryer": "Pračka / sušička",
+    "label.light": "Světlo",
+    "label.timeDate": "Čas a datum",
+    "label.calendar": "Kalendář",
+    "label.householdStatus": "Stav domácnosti",
+    "label.transit": "Škola SNP MHD",
+    "label.persons": "Osoby",
+    "label.livingClimate": "Obývák klima",
+    "label.bedroomClimate": "Ložnice klima",
+    "label.bathroomClimate": "Koupelna klima",
+    "label.temperatureClimate": "Teplota / klima",
+    "label.outdoorClimate": "Venkovní klima",
+    "label.batteries": "Baterie",
+    "label.availability": "Dostupnost zařízení",
+    "label.guestSettings": "Nastavení hostů",
+    "summary.hotspot": "hotspot",
+    "summary.conditionPrefix": "Podmínka:",
+  },
+  en: {
+    "status.selectDashboard": "Select a dashboard.",
+    "status.selectAndLoad": "Select a dashboard and load the preview.",
+    "status.noDashboardsFound": "No dashboard with a picture-elements card was found.",
+    "status.loadedCards": "Loaded: {count} picture-elements card(s).",
+    "status.loadedNoPicture": "Dashboard loaded, but no picture-elements card was found.",
+    "status.selected": "Selected: {name}",
+    "status.changesReady": "Changes are ready to save.",
+    "status.savedWithBackup": "Saved. Backup: {path}",
+    "status.saved": "Saved.",
+    "status.moved": "Element moved, save still needed.",
+    "status.yamlDirty": "YAML fragment edited, save still needed.",
+    "status.realRenderFailed": "Real rendering failed, using fallback preview: {error}",
+    "error.apiNotReady": "Home Assistant API is not ready yet.",
+    "ui.working": "Working...",
+    "ui.unsaved": "Unsaved",
+    "ui.previewSize": "Preview size",
+    "ui.previewOrientation": "Preview orientation",
+    "ui.portrait": "Portrait",
+    "ui.landscape": "Landscape",
+    "ui.previewScale": "Preview scale",
+    "ui.fitWhole": "Fit whole",
+    "ui.actualCssPx": "1:1 CSS px",
+    "ui.positionedCount": "{width} x {height} CSS px - {count} positioned elements",
+    "ui.officialPreview": "Official dashboard preview",
+    "ui.missingImage": "The card has no image field.",
+    "ui.emptyDashboard": "Select a dashboard with a picture-elements card.",
+    "ui.inspector": "Inspector",
+    "ui.inspectorHelp": "Click an element in the preview. Its position, size and code fragment will appear here.",
+    "ui.line": "line {line}",
+    "ui.save": "Save",
+    "ui.entity": "Entity",
+    "ui.icon": "Icon",
+    "ui.leftPercent": "Left %",
+    "ui.topPercent": "Top %",
+    "ui.widthPercent": "Width %",
+    "ui.heightPercent": "Height %",
+    "ui.opacity": "Opacity",
+    "ui.zIndex": "Z-index",
+    "ui.transform": "Transform",
+    "ui.image": "Image",
+    "ui.advancedYaml": "Advanced YAML fragment",
+    "ui.expandEditor": "Expand editor",
+    "ui.saveYamlFragment": "Save YAML fragment",
+    "ui.close": "Close",
+    "ui.dashboards": "Dashboards",
+    "ui.refreshList": "Refresh",
+    "ui.refreshListTitle": "Refresh list",
+    "ui.chooseDashboard": "Select dashboard...",
+    "ui.load": "Load",
+    "ui.dashboardHelp": "The editor shows only dashboards where it found a picture-elements card.",
+    "ui.elements": "Elements",
+    "ui.searchElement": "Search element",
+    "file.cards": "{count} cards",
+    "file.ui": "UI",
+    "file.uiDashboard": "UI dashboard",
+    "file.yamlDashboard": "YAML dashboard",
+    "group.phones": "Phones",
+    "group.tablets": "Tablets",
+    "group.displays": "Displays",
+    "preset.compactTablet": "compact tablet",
+    "preset.notebook": "notebook",
+    "preset.monitorFullHd": "Full HD monitor",
+    "preset.monitorQhd": "QHD monitor",
+    "preset.monitor4k": "4K monitor",
+    "label.leftPanel": "Left panel",
+    "label.vacuumBob": "Vacuum Bob",
+    "label.tv": "TV",
+    "label.doorOpening": "Door opening",
+    "label.music": "Music",
+    "label.settings": "Settings",
+    "label.energy": "Energy",
+    "label.washerDryer": "Washer / dryer",
+    "label.light": "Light",
+    "label.timeDate": "Time and date",
+    "label.calendar": "Calendar",
+    "label.householdStatus": "Household status",
+    "label.transit": "School SNP transit",
+    "label.persons": "People",
+    "label.livingClimate": "Living room climate",
+    "label.bedroomClimate": "Bedroom climate",
+    "label.bathroomClimate": "Bathroom climate",
+    "label.temperatureClimate": "Temperature / climate",
+    "label.outdoorClimate": "Outdoor climate",
+    "label.batteries": "Batteries",
+    "label.availability": "Device availability",
+    "label.guestSettings": "Guest settings",
+    "summary.hotspot": "hotspot",
+    "summary.conditionPrefix": "Condition:",
+  },
+  de: {
+    "status.selectDashboard": "Dashboard auswählen.",
+    "status.selectAndLoad": "Dashboard auswählen und Vorschau laden.",
+    "status.noDashboardsFound": "Kein Dashboard mit einer picture-elements-Karte gefunden.",
+    "status.loadedCards": "Geladen: {count} picture-elements-Karte(n).",
+    "status.loadedNoPicture": "Dashboard geladen, aber keine picture-elements-Karte gefunden.",
+    "status.selected": "Ausgewählt: {name}",
+    "status.changesReady": "Änderungen sind zum Speichern bereit.",
+    "status.savedWithBackup": "Gespeichert. Backup: {path}",
+    "status.saved": "Gespeichert.",
+    "status.moved": "Element verschoben, Speichern ist noch nötig.",
+    "status.yamlDirty": "YAML-Fragment geändert, Speichern ist noch nötig.",
+    "status.realRenderFailed": "Echtes Rendering fehlgeschlagen, Fallback-Vorschau wird verwendet: {error}",
+    "error.apiNotReady": "Die Home Assistant API ist noch nicht bereit.",
+    "ui.working": "Arbeite...",
+    "ui.unsaved": "Nicht gespeichert",
+    "ui.previewSize": "Vorschaugröße",
+    "ui.previewOrientation": "Vorschauausrichtung",
+    "ui.portrait": "Hochformat",
+    "ui.landscape": "Querformat",
+    "ui.previewScale": "Vorschaumaßstab",
+    "ui.fitWhole": "Ganz einpassen",
+    "ui.actualCssPx": "1:1 CSS px",
+    "ui.positionedCount": "{width} x {height} CSS px - {count} positionierte Elemente",
+    "ui.officialPreview": "Offizielle Dashboard-Vorschau",
+    "ui.missingImage": "Die Karte hat kein image-Feld.",
+    "ui.emptyDashboard": "Wähle ein Dashboard mit einer picture-elements-Karte.",
+    "ui.inspector": "Inspektor",
+    "ui.inspectorHelp": "Klicke ein Element in der Vorschau an. Position, Größe und Codefragment erscheinen hier.",
+    "ui.line": "Zeile {line}",
+    "ui.save": "Speichern",
+    "ui.entity": "Entität",
+    "ui.icon": "Icon",
+    "ui.leftPercent": "Links %",
+    "ui.topPercent": "Oben %",
+    "ui.widthPercent": "Breite %",
+    "ui.heightPercent": "Höhe %",
+    "ui.opacity": "Deckkraft",
+    "ui.zIndex": "Z-index",
+    "ui.transform": "Transform",
+    "ui.image": "Image",
+    "ui.advancedYaml": "Erweitertes YAML-Fragment",
+    "ui.expandEditor": "Editor vergrößern",
+    "ui.saveYamlFragment": "YAML-Fragment speichern",
+    "ui.close": "Schließen",
+    "ui.dashboards": "Dashboards",
+    "ui.refreshList": "Aktualisieren",
+    "ui.refreshListTitle": "Liste aktualisieren",
+    "ui.chooseDashboard": "Dashboard auswählen...",
+    "ui.load": "Laden",
+    "ui.dashboardHelp": "Der Editor zeigt nur Dashboards, in denen eine picture-elements-Karte gefunden wurde.",
+    "ui.elements": "Elemente",
+    "ui.searchElement": "Element suchen",
+    "file.cards": "{count} Karten",
+    "file.ui": "UI",
+    "file.uiDashboard": "UI-Dashboard",
+    "file.yamlDashboard": "YAML-Dashboard",
+    "group.phones": "Telefone",
+    "group.tablets": "Tablets",
+    "group.displays": "Bildschirme",
+    "preset.compactTablet": "kompaktes Tablet",
+    "preset.notebook": "Notebook",
+    "preset.monitorFullHd": "Full-HD-Monitor",
+    "preset.monitorQhd": "QHD-Monitor",
+    "preset.monitor4k": "4K-Monitor",
+    "label.leftPanel": "Linkes Panel",
+    "label.vacuumBob": "Staubsauger Bob",
+    "label.tv": "TV",
+    "label.doorOpening": "Türöffnung",
+    "label.music": "Musik",
+    "label.settings": "Einstellungen",
+    "label.energy": "Energie",
+    "label.washerDryer": "Waschmaschine / Trockner",
+    "label.light": "Licht",
+    "label.timeDate": "Uhrzeit und Datum",
+    "label.calendar": "Kalender",
+    "label.householdStatus": "Haushaltsstatus",
+    "label.transit": "Schule SNP ÖPNV",
+    "label.persons": "Personen",
+    "label.livingClimate": "Wohnzimmer Klima",
+    "label.bedroomClimate": "Schlafzimmer Klima",
+    "label.bathroomClimate": "Badezimmer Klima",
+    "label.temperatureClimate": "Temperatur / Klima",
+    "label.outdoorClimate": "Außenklima",
+    "label.batteries": "Batterien",
+    "label.availability": "Geräteverfügbarkeit",
+    "label.guestSettings": "Gäste-Einstellungen",
+    "summary.hotspot": "Hotspot",
+    "summary.conditionPrefix": "Bedingung:",
+  },
+};
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -21,20 +294,53 @@ class VisualDashboardEditorPanel extends HTMLElement {
       previewScaleMode: "fit",
       dirty: false,
       loading: false,
-      status: "Vyber dashboard.",
+      statusKey: "status.selectDashboard",
+      statusParams: {},
       error: "",
     };
   }
 
   set hass(value) {
+    const previousLanguage = this.languageCode();
     this._hass = value;
     if (this._realCard) {
       this._realCard.hass = value;
+    }
+    const nextLanguage = this.languageCode();
+    if (this.isConnected && previousLanguage && previousLanguage !== nextLanguage) {
+      this.render();
     }
   }
 
   get hass() {
     return this._hass;
+  }
+
+  languageCode() {
+    const raw =
+      this.hass?.locale?.language ||
+      this.hass?.language ||
+      this.hass?.selectedLanguage ||
+      navigator.language ||
+      "cs";
+    const code = String(raw).toLowerCase().replace("_", "-").split("-")[0];
+    if (code === "cz") return "cs";
+    return TRANSLATIONS[code] ? code : "en";
+  }
+
+  t(key, params = {}) {
+    const language = this.languageCode();
+    const text = TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || TRANSLATIONS.cs[key] || key;
+    return text.replace(/\{(\w+)\}/g, (_match, name) => String(params[name] ?? ""));
+  }
+
+  setStatus(key, params = {}) {
+    this.state.statusKey = key;
+    this.state.statusParams = params;
+  }
+
+  statusText() {
+    return this.t(this.state.statusKey || "status.selectDashboard", this.state.statusParams || {});
   }
 
   connectedCallback() {
@@ -52,7 +358,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   async callWS(message) {
     if (!this.hass) {
-      throw new Error("Home Assistant API ještě není připravené.");
+      throw new Error(this.t("error.apiNotReady"));
     }
     if (this.hass.callWS) {
       return this.hass.callWS(message);
@@ -67,9 +373,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
     try {
       const result = await this.callWS({ type: `${DOMAIN}/list_files` });
       this.state.files = result.files || [];
-      this.state.status = this.state.files.length
-        ? "Vyber dashboard a načti náhled."
-        : "Nenašel jsem žádný dashboard s kartou picture-elements.";
+      this.setStatus(
+        this.state.files.length ? "status.selectAndLoad" : "status.noDashboardsFound"
+      );
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -95,9 +401,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.cards = result.cards || [];
       this.state.cardIndex = 0;
       this.state.dirty = false;
-      this.state.status = this.state.cards.length
-        ? `Načteno: ${this.state.cards.length} picture-elements karta/karet.`
-        : "Dashboard je načtený, ale nenašel jsem picture-elements kartu.";
+      this.setStatus(
+        this.state.cards.length ? "status.loadedCards" : "status.loadedNoPicture",
+        { count: this.state.cards.length }
+      );
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -133,7 +440,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.selectedElementPath = [...element.path];
     this.state.advancedText = element.fragment || "";
     this.state.advancedDirty = false;
-    this.state.status = `Vybráno: ${this.displayLabel(element)}`;
+    this.setStatus("status.selected", { name: this.displayLabel(element) });
     return element;
   }
 
@@ -162,7 +469,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       target[key] = value;
     }
     this.state.dirty = true;
-    this.state.status = "Změny jsou připravené k uložení.";
+    this.setStatus("status.changesReady");
     this.render();
   }
 
@@ -197,9 +504,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.cards = result.cards || [];
       this.state.dirty = false;
       this.state.advancedDirty = false;
-      this.state.status = result.backup_path
-        ? `Uloženo. Backup: ${result.backup_path}`
-        : "Uloženo.";
+      this.setStatus(
+        result.backup_path ? "status.savedWithBackup" : "status.saved",
+        { path: result.backup_path || "" }
+      );
       const nextElement = this.currentElement();
       this.state.advancedText = nextElement ? nextElement.fragment || "" : "";
     } catch (err) {
@@ -248,7 +556,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       element.config.style.left = leftText;
       element.config.style.top = topText;
       this.state.dirty = true;
-      this.state.status = "Prvek posunut, ještě uložit.";
+      this.setStatus("status.moved");
 
       const node = this.shadowRoot.querySelector(
         `.plan-element[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"]`
@@ -262,7 +570,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       if (leftInput) leftInput.value = Number.parseFloat(leftText);
       if (topInput) topInput.value = Number.parseFloat(topText);
       const status = this.shadowRoot.querySelector(".topbar p");
-      if (status) status.textContent = this.state.status;
+      if (status) status.textContent = this.statusText();
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
@@ -332,21 +640,21 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   previewPresets() {
     return [
-      { key: "phone-61", group: "Telefony", label: '6,1" iPhone / Galaxy S', width: 390, height: 844 },
-      { key: "phone-63", group: "Telefony", label: '6,3" iPhone Pro / Galaxy S', width: 402, height: 874 },
-      { key: "phone-65", group: "Telefony", label: '6,5" iPhone / Samsung', width: 414, height: 896 },
-      { key: "phone-67", group: "Telefony", label: '6,7" iPhone Plus / Galaxy+', width: 430, height: 932 },
-      { key: "phone-68", group: "Telefony", label: '6,8" Galaxy S22/S23/S24 Ultra', width: 412, height: 915 },
-      { key: "phone-69", group: "Telefony", label: '6,9" iPhone Max / Galaxy S25 Ultra', width: 440, height: 956 },
-      { key: "tablet-89", group: "Tablety", label: '8,9" kompaktni tablet', width: 768, height: 1024 },
-      { key: "tablet-10", group: "Tablety", label: '10" tablet', width: 800, height: 1280 },
-      { key: "tablet-11", group: "Tablety", label: '11" iPad / Galaxy Tab', width: 834, height: 1194 },
-      { key: "tablet-13", group: "Tablety", label: '13" iPad Pro / Galaxy Tab', width: 1024, height: 1366 },
-      { key: "display-13", group: "Obrazovky", label: '13" notebook', width: 1280, height: 800 },
-      { key: "display-156", group: "Obrazovky", label: '15,6" notebook', width: 1366, height: 768 },
-      { key: "display-24", group: "Obrazovky", label: '24" monitor Full HD', width: 1920, height: 1080 },
-      { key: "display-27", group: "Obrazovky", label: '27" monitor QHD', width: 2560, height: 1440 },
-      { key: "display-32", group: "Obrazovky", label: '32" monitor 4K', width: 3840, height: 2160 },
+      { key: "phone-61", group: this.t("group.phones"), label: '6,1" iPhone / Galaxy S', width: 390, height: 844 },
+      { key: "phone-63", group: this.t("group.phones"), label: '6,3" iPhone Pro / Galaxy S', width: 402, height: 874 },
+      { key: "phone-65", group: this.t("group.phones"), label: '6,5" iPhone / Samsung', width: 414, height: 896 },
+      { key: "phone-67", group: this.t("group.phones"), label: '6,7" iPhone Plus / Galaxy+', width: 430, height: 932 },
+      { key: "phone-68", group: this.t("group.phones"), label: '6,8" Galaxy S22/S23/S24 Ultra', width: 412, height: 915 },
+      { key: "phone-69", group: this.t("group.phones"), label: '6,9" iPhone Max / Galaxy S25 Ultra', width: 440, height: 956 },
+      { key: "tablet-89", group: this.t("group.tablets"), label: `8,9" ${this.t("preset.compactTablet")}`, width: 768, height: 1024 },
+      { key: "tablet-10", group: this.t("group.tablets"), label: '10" tablet', width: 800, height: 1280 },
+      { key: "tablet-11", group: this.t("group.tablets"), label: '11" iPad / Galaxy Tab', width: 834, height: 1194 },
+      { key: "tablet-13", group: this.t("group.tablets"), label: '13" iPad Pro / Galaxy Tab', width: 1024, height: 1366 },
+      { key: "display-13", group: this.t("group.displays"), label: `13" ${this.t("preset.notebook")}`, width: 1280, height: 800 },
+      { key: "display-156", group: this.t("group.displays"), label: `15,6" ${this.t("preset.notebook")}`, width: 1366, height: 768 },
+      { key: "display-24", group: this.t("group.displays"), label: `24" ${this.t("preset.monitorFullHd")}`, width: 1920, height: 1080 },
+      { key: "display-27", group: this.t("group.displays"), label: `27" ${this.t("preset.monitorQhd")}`, width: 2560, height: 1440 },
+      { key: "display-32", group: this.t("group.displays"), label: `32" ${this.t("preset.monitor4k")}`, width: 3840, height: 2160 },
     ];
   }
 
@@ -391,8 +699,42 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (entity) return this.friendlyEntityName(entity);
 
     if (config.icon) return this.labelFromIcon(config.icon);
-    if (element.label && !this.isImplementationLabel(element.label)) return element.label;
+    if (element.label && !this.isImplementationLabel(element.label)) {
+      return this.localizedBackendLabel(element.label);
+    }
     return this.labelFromCardType(config.card_type || config.type || "element");
+  }
+
+  localizedBackendLabel(value) {
+    const text = String(value || "");
+    const normalized = this.normalizedSearchText(text).replace(/[^0-9a-z]+/g, " ").trim();
+    const known = {
+      "levy panel pozadi": "label.leftPanel",
+      "levy panel": "label.leftPanel",
+      "vysavac bob": "label.vacuumBob",
+      tv: "label.tv",
+      "otevirani dveri": "label.doorOpening",
+      hudba: "label.music",
+      nastaveni: "label.settings",
+      energie: "label.energy",
+      "pracka susicka": "label.washerDryer",
+      svetlo: "label.light",
+      "cas datum": "label.timeDate",
+      kalendar: "label.calendar",
+      "stav domacnosti": "label.householdStatus",
+      "skola snp mhd": "label.transit",
+      osoby: "label.persons",
+      "obyvak klima": "label.livingClimate",
+      "loznice klima": "label.bedroomClimate",
+      "koupelna klima": "label.bathroomClimate",
+      "teplota klima": "label.temperatureClimate",
+      "venkovni klima": "label.outdoorClimate",
+      baterie: "label.batteries",
+      "dostupnost zarizeni": "label.availability",
+      "nastaveni hostu": "label.guestSettings",
+    };
+    if (known[normalized]) return this.t(known[normalized]);
+    return this.localizedElementParent(text);
   }
 
   literalLabel(value) {
@@ -423,7 +765,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const image = String(value);
     const lowered = image.toLowerCase();
     if (lowered.startsWith("data:image") && lowered.includes("fill='black'")) {
-      return "Levý panel";
+      return this.t("label.leftPanel");
     }
     const file = image.split("?")[0].split("/").pop() || "";
     const stem = file.replace(/\.[^.]+$/, "").replace(/^planek[-_]?/i, "");
@@ -432,15 +774,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   labelFromIcon(icon) {
     const map = {
-      "mdi:robot-vacuum": "Vysavač Bob",
-      "mdi:television": "TV",
-      "mdi:lock": "Otevírání dveří",
-      "mdi:music": "Hudba",
-      "mdi:cog": "Nastavení",
-      "mdi:lightning-bolt": "Energie",
-      "mdi:washing-machine": "Pračka / sušička",
-      "mdi:lightbulb-on": "Světlo",
-      "mdi:lightbulb-outline": "Světlo",
+      "mdi:robot-vacuum": this.t("label.vacuumBob"),
+      "mdi:television": this.t("label.tv"),
+      "mdi:lock": this.t("label.doorOpening"),
+      "mdi:music": this.t("label.music"),
+      "mdi:cog": this.t("label.settings"),
+      "mdi:lightning-bolt": this.t("label.energy"),
+      "mdi:washing-machine": this.t("label.washerDryer"),
+      "mdi:lightbulb-on": this.t("label.light"),
+      "mdi:lightbulb-outline": this.t("label.light"),
     };
     return map[icon] || this.humanizeId(String(icon).replace(/^mdi:/, ""));
   }
@@ -451,25 +793,29 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const joined = ids.join(" ").toLowerCase();
     const json = JSON.stringify(config).toLowerCase();
 
-    if (config.entity === "sensor.time" || joined.includes("sensor.time")) return "Čas a datum";
-    if (cardType.includes("calendar") || joined.includes("calendar.")) return "Kalendář";
+    if (config.entity === "sensor.time" || joined.includes("sensor.time")) return this.t("label.timeDate");
+    if (cardType.includes("calendar") || joined.includes("calendar.")) return this.t("label.calendar");
     if (
       json.includes("stav dom") ||
       json.includes("status-line") ||
       json.includes("trackedavailability") ||
       json.includes("messages.push")
     ) {
-      return "Stav domácnosti";
+      return this.t("label.householdStatus");
     }
-    if (joined.includes("mhd_skola_snp") || json.includes("skola snp")) return "Škola SNP MHD";
-    if (joined.includes("vacuum.bob") || json.includes("vacuum.bob")) return "Vysavač Bob";
-    if (joined.includes("pracka") || joined.includes("susicka")) return "Pračka / sušička";
-    if (joined.includes("person.pavel") || joined.includes("person.misa")) return "Osoby";
+    if (json.includes("outside-row")) return this.t("label.outdoorClimate");
+    if (json.includes("batteryids")) return this.t("label.batteries");
+    if (json.includes("availabilityids")) return this.t("label.availability");
+    if (json.includes("hosti_pin")) return this.t("label.guestSettings");
+    if (joined.includes("mhd_skola_snp") || json.includes("skola snp")) return this.t("label.transit");
+    if (joined.includes("vacuum.bob") || json.includes("vacuum.bob")) return this.t("label.vacuumBob");
+    if (joined.includes("pracka") || joined.includes("susicka")) return this.t("label.washerDryer");
+    if (joined.includes("person.pavel") || joined.includes("person.misa")) return this.t("label.persons");
     if (joined.includes("teplota") || joined.includes("humidity") || joined.includes("vlhkost") || joined.includes("co2")) {
-      if (joined.includes("obyvak")) return "Obývák klima";
-      if (joined.includes("loznice")) return "Ložnice klima";
-      if (joined.includes("fp300") || joined.includes("koupelna")) return "Koupelna klima";
-      return "Teplota / klima";
+      if (joined.includes("obyvak")) return this.t("label.livingClimate");
+      if (joined.includes("loznice")) return this.t("label.bedroomClimate");
+      if (joined.includes("fp300") || joined.includes("koupelna")) return this.t("label.bathroomClimate");
+      return this.t("label.temperatureClimate");
     }
 
     if (ids.length) return this.friendlyEntityName(ids[0]);
@@ -515,28 +861,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   humanizeId(value) {
-    const replacements = {
-      obyvak: "Obývák",
-      loznice: "Ložnice",
-      kuchyn: "Kuchyň",
-      koupelna: "Koupelna",
-      zachod: "Záchod",
-      pracovna: "Pracovna",
-      svetla: "Světla",
-      svetlo: "Světlo",
-      vypinac: "Vypínač",
-      hosti: "Hosté",
-      otevirani: "Otevírání",
-      dveri: "dveří",
-      mhd: "MHD",
-      skola: "Škola",
-      snp: "SNP",
-      next: "odjezdy",
-      time: "Čas",
-      vykon: "výkon",
-      pracka: "pračka",
-      susicka: "sušička",
-    };
+    const replacements = this.humanizeReplacements();
     return String(value || "")
       .replace(/[^0-9A-Za-zÀ-ž]+/g, " ")
       .trim()
@@ -546,20 +871,99 @@ class VisualDashboardEditorPanel extends HTMLElement {
       .join(" ");
   }
 
+  humanizeReplacements() {
+    const language = this.languageCode();
+    const dictionaries = {
+      cs: {
+        obyvak: "Obývák",
+        loznice: "Ložnice",
+        kuchyn: "Kuchyň",
+        koupelna: "Koupelna",
+        zachod: "Záchod",
+        pracovna: "Pracovna",
+        svetla: "Světla",
+        svetlo: "Světlo",
+        vypinac: "Vypínač",
+        hosti: "Hosté",
+        otevirani: "Otevírání",
+        dveri: "dveří",
+        mhd: "MHD",
+        skola: "Škola",
+        snp: "SNP",
+        next: "odjezdy",
+        time: "Čas",
+        vykon: "výkon",
+        pracka: "pračka",
+        susicka: "sušička",
+      },
+      en: {
+        obyvak: "Living room",
+        loznice: "Bedroom",
+        kuchyn: "Kitchen",
+        koupelna: "Bathroom",
+        zachod: "Toilet",
+        pracovna: "Office",
+        svetla: "Lights",
+        svetlo: "Light",
+        vypinac: "Switch",
+        hosti: "Guests",
+        otevirani: "Opening",
+        dveri: "doors",
+        mhd: "Transit",
+        skola: "School",
+        snp: "SNP",
+        next: "departures",
+        time: "Time",
+        vykon: "power",
+        pracka: "washer",
+        susicka: "dryer",
+      },
+      de: {
+        obyvak: "Wohnzimmer",
+        loznice: "Schlafzimmer",
+        kuchyn: "Küche",
+        koupelna: "Badezimmer",
+        zachod: "Toilette",
+        pracovna: "Büro",
+        svetla: "Lichter",
+        svetlo: "Licht",
+        vypinac: "Schalter",
+        hosti: "Gäste",
+        otevirani: "Öffnung",
+        dveri: "Türen",
+        mhd: "ÖPNV",
+        skola: "Schule",
+        snp: "SNP",
+        next: "Abfahrten",
+        time: "Uhrzeit",
+        vykon: "Leistung",
+        pracka: "Waschmaschine",
+        susicka: "Trockner",
+      },
+    };
+    return dictionaries[language] || dictionaries.en;
+  }
+
   elementSummary(element) {
     const config = element.config || {};
     const style = config.style || {};
     const parts = [];
     const kind = this.elementKind(config);
 
-    if (element.parent) parts.push(element.parent);
+    if (element.parent) parts.push(this.localizedElementParent(element.parent));
     if (config.entity) parts.push(config.entity);
     if (config.card_type) parts.push(config.card_type);
     else if (config.type) parts.push(config.type);
     if (style.left || style.top) parts.push(`${style.left || "-"}, ${style.top || "-"}`);
-    if (kind === "hotspot") parts.push("hotspot");
+    if (kind === "hotspot") parts.push(this.t("summary.hotspot"));
 
     return parts.filter(Boolean).join(" - ");
+  }
+
+  localizedElementParent(value) {
+    const text = String(value || "");
+    if (!text.toLowerCase().startsWith("podmínka:")) return text;
+    return text.replace(/^Podmínka:/i, this.t("summary.conditionPrefix"));
   }
 
   filteredElements() {
@@ -701,18 +1105,25 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const config = element.config || {};
     if (config.icon) return config.icon;
 
-    const label = this.displayLabel(element).toLowerCase();
-    if (label.includes("cas") || label.includes("datum")) return "mdi:chart-line";
-    if (label.includes("klima") || label.includes("teplota")) return "mdi:thermometer";
-    if (label.includes("kalendar")) return "mdi:calendar";
-    if (label.includes("osob")) return "mdi:account-group";
-    if (label.includes("vysavac")) return "mdi:robot-vacuum";
-    if (label.includes("energie")) return "mdi:lightning-bolt";
-    if (label.includes("hudba")) return "mdi:music";
-    if (label.includes("stav dom")) return "mdi:format-list-bulleted";
+    const label = this.normalizedSearchText(this.displayLabel(element));
+    if (label.includes("cas") || label.includes("time") || label.includes("datum") || label.includes("date") || label.includes("uhrzeit")) return "mdi:chart-line";
+    if (label.includes("klima") || label.includes("climate") || label.includes("teplota") || label.includes("temperature") || label.includes("temperatur")) return "mdi:thermometer";
+    if (label.includes("kalendar") || label.includes("calendar") || label.includes("kalender")) return "mdi:calendar";
+    if (label.includes("osob") || label.includes("people") || label.includes("person")) return "mdi:account-group";
+    if (label.includes("vysavac") || label.includes("vacuum") || label.includes("staubsauger")) return "mdi:robot-vacuum";
+    if (label.includes("energie") || label.includes("energy")) return "mdi:lightning-bolt";
+    if (label.includes("hudba") || label.includes("music") || label.includes("musik")) return "mdi:music";
+    if (label.includes("stav dom") || label.includes("household status") || label.includes("haushaltsstatus")) return "mdi:format-list-bulleted";
     if (config.type === "image") return "mdi:image-outline";
     if (this.isTransparentCard(config)) return "mdi:gesture-tap";
     return config.type === "state-icon" ? "mdi:circle-medium" : this.fallbackIcon(config);
+  }
+
+  normalizedSearchText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
   }
 
   renderElementContent(element) {
@@ -805,9 +1216,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       stage.classList.add("real-failed");
       stage.style.height = "";
       if (error) {
-        error.textContent = `Reálné vykreslení se nepovedlo, používám nouzový náhled: ${
-          err?.message || err
-        }`;
+        error.textContent = this.t("status.realRenderFailed", { error: err?.message || err });
       }
       requestAnimationFrame(() => this.syncPreviewFit());
       this.resetOverlayBounds();
@@ -1066,7 +1475,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   renderPreview() {
     const card = this.currentCard();
     if (!card) {
-      return `<div class="empty-state">Vyber dashboard s kartou picture-elements.</div>`;
+      return `<div class="empty-state">${this.escape(this.t("ui.emptyDashboard"))}</div>`;
     }
     const image = this.imageUrl(card.image);
     const dashboardUrl = this.dashboardPreviewUrl(card.preview_url);
@@ -1128,7 +1537,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
             )
             .join("")}
         </select>
-        <select id="previewSize" title="Velikost náhledu">
+        <select id="previewSize" title="${this.escape(this.t("ui.previewSize"))}">
           ${Object.entries(presetGroups)
             .map(([group, presets]) => {
               const options = presets
@@ -1143,29 +1552,29 @@ class VisualDashboardEditorPanel extends HTMLElement {
             })
             .join("")}
         </select>
-        <select id="previewOrientation" title="Orientace náhledu">
-          <option value="portrait" ${this.state.previewOrientation === "portrait" ? "selected" : ""}>Na výšku</option>
-          <option value="landscape" ${this.state.previewOrientation === "landscape" ? "selected" : ""}>Na šířku</option>
+        <select id="previewOrientation" title="${this.escape(this.t("ui.previewOrientation"))}">
+          <option value="portrait" ${this.state.previewOrientation === "portrait" ? "selected" : ""}>${this.escape(this.t("ui.portrait"))}</option>
+          <option value="landscape" ${this.state.previewOrientation === "landscape" ? "selected" : ""}>${this.escape(this.t("ui.landscape"))}</option>
         </select>
-        <select id="previewScaleMode" title="Měřítko náhledu">
-          <option value="fit" ${this.state.previewScaleMode === "fit" ? "selected" : ""}>Vejít celé</option>
-          <option value="actual" ${this.state.previewScaleMode === "actual" ? "selected" : ""}>1:1 CSS px</option>
+        <select id="previewScaleMode" title="${this.escape(this.t("ui.previewScale"))}">
+          <option value="fit" ${this.state.previewScaleMode === "fit" ? "selected" : ""}>${this.escape(this.t("ui.fitWhole"))}</option>
+          <option value="actual" ${this.state.previewScaleMode === "actual" ? "selected" : ""}>${this.escape(this.t("ui.actualCssPx"))}</option>
         </select>
-        <span>${dimensions.width} x ${dimensions.height} CSS px - ${visibleCount} prvků s pozicí</span>
+        <span>${this.escape(this.t("ui.positionedCount", { width: dimensions.width, height: dimensions.height, count: visibleCount }))}</span>
       </div>
       <div class="preview-frame scale-${this.escape(this.state.previewScaleMode)}">
         <div id="previewFit" class="preview-fit">
           <div class="plan-stage" style="width:${dimensions.width}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
             ${
               dashboardUrl
-                ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="Oficiální náhled dashboardu"></iframe>`
+                ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="${this.escape(this.t("ui.officialPreview"))}"></iframe>`
                 : `<div id="realCardHost" class="real-card-host"></div>`
             }
             <div class="fallback-preview">
               ${
                 image
                   ? `<img class="plan-bg" src="${this.escape(image)}" alt="">`
-                  : `<div class="missing-bg">Karta nemá obrázek v poli image.</div>`
+                  : `<div class="missing-bg">${this.escape(this.t("ui.missingImage"))}</div>`
               }
             </div>
             <div class="edit-overlay">
@@ -1183,8 +1592,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (!element) {
       return `
         <section class="inspector">
-          <h2>Inspector</h2>
-          <p class="muted">Klikni na prvek v náhledu. Tady se objeví jeho pozice, velikost a kódový fragment.</p>
+          <h2>${this.escape(this.t("ui.inspector"))}</h2>
+          <p class="muted">${this.escape(this.t("ui.inspectorHelp"))}</p>
         </section>
       `;
     }
@@ -1196,62 +1605,62 @@ class VisualDashboardEditorPanel extends HTMLElement {
         <div class="inspector-head">
           <div>
             <h2>${this.escape(this.displayLabel(element))}</h2>
-            <p>${this.escape(config.card_type || config.type || "element")}${element.line ? ` - řádek ${element.line}` : ""}</p>
+            <p>${this.escape(config.card_type || config.type || "element")}${element.line ? ` - ${this.escape(this.t("ui.line", { line: element.line }))}` : ""}</p>
           </div>
-          <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>Uložit</button>
+          <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.save"))}</button>
         </div>
 
         <div class="field-grid">
           <label>
-            Entity
+            ${this.escape(this.t("ui.entity"))}
             <input data-field="entity" value="${this.escape(config.entity || "")}" placeholder="light.kitchen">
           </label>
           <label>
-            Ikona
+            ${this.escape(this.t("ui.icon"))}
             <input data-field="icon" value="${this.escape(config.icon || "")}" placeholder="mdi:lightbulb">
           </label>
           <label>
-            Vlevo %
+            ${this.escape(this.t("ui.leftPercent"))}
             <input data-percent-field="style.left" type="number" step="0.1" value="${this.percentToNumber(style.left)}">
           </label>
           <label>
-            Nahoře %
+            ${this.escape(this.t("ui.topPercent"))}
             <input data-percent-field="style.top" type="number" step="0.1" value="${this.percentToNumber(style.top)}">
           </label>
           <label>
-            Šířka %
+            ${this.escape(this.t("ui.widthPercent"))}
             <input data-percent-field="style.width" type="number" step="0.1" value="${this.percentToNumber(style.width)}">
           </label>
           <label>
-            Výška %
+            ${this.escape(this.t("ui.heightPercent"))}
             <input data-percent-field="style.height" type="number" step="0.1" value="${this.percentToNumber(style.height)}">
           </label>
           <label>
-            Průhlednost
+            ${this.escape(this.t("ui.opacity"))}
             <input data-number-field="style.opacity" type="number" step="0.05" min="0" max="1" value="${this.escape(style.opacity || "")}">
           </label>
           <label>
-            Z-index
+            ${this.escape(this.t("ui.zIndex"))}
             <input data-number-field="style.z-index" type="number" step="1" value="${this.escape(style["z-index"] || "")}">
           </label>
         </div>
 
         <label class="wide-field">
-          Transform
+          ${this.escape(this.t("ui.transform"))}
           <input data-field="style.transform" value="${this.escape(style.transform || "")}" placeholder="translate(-50%, -50%) scale(1.1)">
         </label>
 
         <label class="wide-field">
-          Image
+          ${this.escape(this.t("ui.image"))}
           <input data-field="image" value="${this.escape(config.image || "")}" placeholder="/local/floorplan/light.png">
         </label>
 
         <details class="advanced" ${this.state.advancedDirty ? "open" : ""}>
-          <summary>Pokročilý YAML fragment</summary>
+          <summary>${this.escape(this.t("ui.advancedYaml"))}</summary>
           <textarea id="advancedText" spellcheck="false">${this.escape(this.state.advancedText)}</textarea>
           <div class="advanced-actions">
-            <button id="openAdvancedModal" type="button">Zvětšit editor</button>
-            <button id="saveAdvanced" type="button" ${this.state.loading ? "disabled" : ""}>Uložit YAML fragment</button>
+            <button id="openAdvancedModal" type="button">${this.escape(this.t("ui.expandEditor"))}</button>
+            <button id="saveAdvanced" type="button" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.saveYamlFragment"))}</button>
           </div>
         </details>
       </section>
@@ -1264,17 +1673,17 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
     return `
       <div id="advancedModalBackdrop" class="modal-backdrop">
-        <section class="yaml-modal" role="dialog" aria-modal="true" aria-label="Pokročilý YAML fragment">
+        <section class="yaml-modal" role="dialog" aria-modal="true" aria-label="${this.escape(this.t("ui.advancedYaml"))}">
           <div class="yaml-modal-head">
             <div>
               <h2>${this.escape(this.displayLabel(element))}</h2>
-              <p>Pokročilý YAML fragment</p>
+              <p>${this.escape(this.t("ui.advancedYaml"))}</p>
             </div>
-            <button id="closeAdvancedModal" type="button">Zavřít</button>
+            <button id="closeAdvancedModal" type="button">${this.escape(this.t("ui.close"))}</button>
           </div>
           <textarea id="advancedModalText" spellcheck="false">${this.escape(this.state.advancedText)}</textarea>
           <div class="yaml-modal-actions">
-            <button id="saveAdvancedModal" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>Uložit YAML fragment</button>
+            <button id="saveAdvancedModal" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.saveYamlFragment"))}</button>
           </div>
         </section>
       </div>
@@ -1286,23 +1695,23 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return `
       <aside class="files">
         <div class="files-head">
-          <h2>Dashboardy</h2>
-          <button id="refreshFiles" title="Obnovit seznam">Obnovit</button>
+          <h2>${this.escape(this.t("ui.dashboards"))}</h2>
+          <button id="refreshFiles" title="${this.escape(this.t("ui.refreshListTitle"))}">${this.escape(this.t("ui.refreshList"))}</button>
         </div>
         <select id="fileSelect" size="12">
-          <option value="">Vyber dashboard...</option>
+          <option value="">${this.escape(this.t("ui.chooseDashboard"))}</option>
           ${this.state.files
             .map(
               (file) => {
-                const label = file.label || file.path;
+                const label = this.localizedFileLabel(file.label || file.path);
                 const suffix =
                   file.source === "lovelace"
                     ? file.cards
-                      ? ` - ${file.cards} karet`
-                      : " - UI"
+                      ? ` - ${this.t("file.cards", { count: file.cards })}`
+                      : ` - ${this.t("file.ui")}`
                     : file.cards
-                      ? ` - ${file.cards} karet`
-                      : " - YAML dashboard";
+                      ? ` - ${this.t("file.cards", { count: file.cards })}`
+                      : ` - ${this.t("file.yamlDashboard")}`;
                 return (
                 `<option value="${this.escape(file.path)}" ${
                   file.path === this.state.selectedFile ? "selected" : ""
@@ -1314,11 +1723,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
             )
             .join("")}
         </select>
-        <button id="loadFile" class="primary" ${!this.state.selectedFile ? "disabled" : ""}>Načíst</button>
-        <p class="muted">Editor zobrazuje jen dashboardy, ve kterých našel kartu picture-elements.</p>
+        <button id="loadFile" class="primary" ${!this.state.selectedFile ? "disabled" : ""}>${this.escape(this.t("ui.load"))}</button>
+        <p class="muted">${this.escape(this.t("ui.dashboardHelp"))}</p>
         ${card ? this.renderElementList() : ""}
       </aside>
     `;
+  }
+
+  localizedFileLabel(value) {
+    return String(value || "").replace(/\(UI dashboard\)/i, `(${this.t("file.uiDashboard")})`);
   }
 
   renderElementList() {
@@ -1333,14 +1746,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return `
       <section class="element-list">
         <div class="element-list-head">
-          <h2>Prvky</h2>
+          <h2>${this.escape(this.t("ui.elements"))}</h2>
           <span>${items.length}/${totalPositioned}</span>
         </div>
         <input
           id="elementFilter"
           class="element-filter"
           value="${this.escape(this.state.elementFilter)}"
-          placeholder="Hledat prvek"
+          placeholder="${this.escape(this.t("ui.searchElement"))}"
         >
         <div class="element-list-items">
           ${items
@@ -1370,11 +1783,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
         <header class="topbar">
           <div>
             <h1>Visual Dashboard Editor</h1>
-            <p>${this.escape(this.state.status)}</p>
+            <p>${this.escape(this.statusText())}</p>
           </div>
           <span class="pill">v${UI_VERSION}</span>
-          ${this.state.loading ? `<span class="pill">Pracuji...</span>` : ""}
-          ${this.state.dirty || this.state.advancedDirty ? `<span class="pill dirty">Neuloženo</span>` : ""}
+          ${this.state.loading ? `<span class="pill">${this.escape(this.t("ui.working"))}</span>` : ""}
+          ${this.state.dirty || this.state.advancedDirty ? `<span class="pill dirty">${this.escape(this.t("ui.unsaved"))}</span>` : ""}
         </header>
         ${this.state.error ? `<div class="error">${this.escape(this.state.error)}</div>` : ""}
         <main class="layout">
@@ -1504,12 +1917,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.shadowRoot.querySelector("#advancedText")?.addEventListener("input", (event) => {
       this.state.advancedText = event.target.value;
       this.state.advancedDirty = true;
-      this.state.status = "YAML fragment je upravený, ještě uložit.";
+      this.setStatus("status.yamlDirty");
     });
     this.shadowRoot.querySelector("#advancedModalText")?.addEventListener("input", (event) => {
       this.state.advancedText = event.target.value;
       this.state.advancedDirty = true;
-      this.state.status = "YAML fragment je upravený, ještě uložit.";
+      this.setStatus("status.yamlDirty");
       const inline = this.shadowRoot.querySelector("#advancedText");
       if (inline) inline.value = event.target.value;
     });

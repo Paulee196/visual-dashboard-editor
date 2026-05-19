@@ -1,0 +1,14 @@
+{
+  "title": "Visual Dashboard Editor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Visual Dashboard Editor",
+        "description": "Fügt einen visuellen Editor für Home Assistant Dashboards hinzu."
+      }
+    },
+    "abort": {
+      "already_configured": "Visual Dashboard Editor ist bereits konfiguriert."
+    }
+  }
+}
