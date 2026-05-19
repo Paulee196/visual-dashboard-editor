@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.18
+
+- Measure editor hitboxes from Home Assistant's rendered `.element` nodes inside `picture-elements`, so large auto-height widgets such as calendar, transit and status panels are clickable across their full visible area.
+- Align drag math to the measured edit overlay instead of the whole preview viewport.
+- Hide inactive conditional element hitboxes from the preview/list to avoid invisible duplicates catching clicks.
+
 ## 0.2.17
 
 - Align invisible editor hitboxes to the actually rendered `picture-elements` card inside the Lovelace iframe instead of the whole preview viewport.

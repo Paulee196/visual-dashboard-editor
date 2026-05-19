@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.17";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v14";
+const UI_VERSION = "0.2.18";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v15";
 
 class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
@@ -216,13 +216,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
     event.stopPropagation();
 
     const stage = this.shadowRoot.querySelector(".plan-stage");
+    const overlay = this.shadowRoot.querySelector(".edit-overlay");
     const card = this.state.cards[cardIndex];
     const element = card && card.elements[elementIndex];
     if (!stage || !element) return;
 
     this.setSelectedElement(cardIndex, elementIndex);
 
-    const rect = stage.getBoundingClientRect();
+    const rect = (overlay || stage).getBoundingClientRect();
     const style = element.config.style || {};
     const parsedLeft = this.percentToNumber(style.left);
     const parsedTop = this.percentToNumber(style.top);
@@ -568,6 +569,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return card.elements
       .map((element, index) => ({ element, index }))
       .filter(({ element }) => this.hasPosition((element.config || {}).style || {}))
+      .filter(({ element }) => this.isElementConditionActive(element))
       .filter(({ element }) => {
         if (!query) return true;
         const haystack = `${this.displayLabel(element)} ${element.label} ${this.elementSummary(element)}`.toLowerCase();
@@ -577,6 +579,46 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   hasPosition(style) {
     return Boolean(style && (style.left || style.top));
+  }
+
+  isElementConditionActive(element) {
+    const groups = this.ancestorConditionGroups(element);
+    if (!groups.length) return true;
+    return groups.every((conditions) =>
+      conditions.every((condition) => this.conditionMatches(condition))
+    );
+  }
+
+  ancestorConditionGroups(element) {
+    const card = this.currentCard();
+    if (!card || !Array.isArray(card.path) || !Array.isArray(element.path)) return [];
+    if (!card.path.every((part, index) => element.path[index] === part)) return [];
+    const relativePath = element.path.slice(card.path.length);
+    let node = card.config;
+    const groups = [];
+
+    for (const part of relativePath) {
+      if (
+        node &&
+        typeof node === "object" &&
+        !Array.isArray(node) &&
+        node.type === "conditional" &&
+        Array.isArray(node.conditions)
+      ) {
+        groups.push(node.conditions);
+      }
+      node = node?.[part];
+    }
+    return groups;
+  }
+
+  conditionMatches(condition) {
+    if (!condition || typeof condition !== "object" || !condition.entity) return true;
+    if (!this.hass?.states) return true;
+    const state = this.hass?.states?.[condition.entity]?.state;
+    if (condition.state !== undefined) return state === String(condition.state);
+    if (condition.state_not !== undefined) return state !== String(condition.state_not);
+    return true;
   }
 
   isTransparentCard(config) {
@@ -636,6 +678,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (this.samePath(element.path, this.state.selectedElementPath)) classes.push("selected");
     if (style.width || style.height) classes.push("has-explicit-size");
     if (element.parent) classes.push("nested-element");
+    if (!this.isElementConditionActive(element)) classes.push("not-rendered");
     if (this.isClickThrough(style)) classes.push("click-through");
     return classes.join(" ");
   }
@@ -788,9 +831,16 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
     const iframe = this.shadowRoot.querySelector(".dashboard-frame");
     if (iframe) {
-      const rect = this.renderedPictureCardRectFromIframe(iframe);
-      if (rect) {
-        this.applyOverlayBounds(overlay, rect.left, rect.top, rect.width, rect.height);
+      const info = this.renderedPictureCardInfoFromIframe(iframe);
+      if (info) {
+        this.applyOverlayBounds(
+          overlay,
+          info.rect.left,
+          info.rect.top,
+          info.rect.width,
+          info.rect.height
+        );
+        this.syncElementHitboxesFromRenderedCard(overlay, info);
         return;
       }
     }
@@ -799,16 +849,17 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const renderedCard = host?.firstElementChild;
     if (renderedCard) {
       const stageRect = stage.getBoundingClientRect();
-      const cardRect = renderedCard.getBoundingClientRect();
+      const info = this.pictureCardRenderInfo(renderedCard);
       const scale = this.previewStageScale(stage);
-      if (cardRect.width > 10 && cardRect.height > 10) {
+      if (info) {
         this.applyOverlayBounds(
           overlay,
-          (cardRect.left - stageRect.left) / scale,
-          (cardRect.top - stageRect.top) / scale,
-          cardRect.width / scale,
-          cardRect.height / scale
+          (info.rect.left - stageRect.left) / scale,
+          (info.rect.top - stageRect.top) / scale,
+          info.rect.width / scale,
+          info.rect.height / scale
         );
+        this.syncElementHitboxesFromRenderedCard(overlay, info, scale);
         return;
       }
     }
@@ -823,7 +874,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return Number.isFinite(value) && value > 0 ? value : 1;
   }
 
-  renderedPictureCardRectFromIframe(iframe) {
+  renderedPictureCardInfoFromIframe(iframe) {
     let doc;
     try {
       doc = iframe.contentDocument;
@@ -833,11 +884,134 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (!doc) return null;
 
     const target = this.deepQuery(doc, "hui-picture-elements-card");
-    if (!target) return null;
+    return this.pictureCardRenderInfo(target);
+  }
 
-    const rect = target.getBoundingClientRect();
+  pictureCardRenderInfo(card) {
+    if (!card) return null;
+    const root =
+      card.shadowRoot?.querySelector("#root") ||
+      card.shadowRoot?.querySelector("ha-card") ||
+      card;
+    const rect = root.getBoundingClientRect();
     if (rect.width < 10 || rect.height < 10) return null;
-    return rect;
+    return { card, root, rect };
+  }
+
+  syncElementHitboxesFromRenderedCard(overlay, info, scale = 1) {
+    const nodes = Array.from(overlay.querySelectorAll(".plan-element"));
+    const renderedElements = this.renderedElementInfos(info.card);
+    if (!nodes.length || !renderedElements.length) return;
+
+    nodes.forEach((node) => {
+      node.classList.remove("rendered-hitbox", "not-rendered");
+    });
+
+    const used = new Set();
+    const card = this.currentCard();
+    for (const node of nodes) {
+      const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
+      const element = card?.elements?.[elementIndex];
+      if (element && !this.isElementConditionActive(element)) {
+        node.classList.add("not-rendered");
+        continue;
+      }
+
+      const match = this.bestRenderedElementMatch(node, renderedElements, used);
+      if (!match) {
+        if (node.classList.contains("nested-element")) {
+          node.classList.add("not-rendered");
+        }
+        continue;
+      }
+
+      used.add(match.index);
+      const rect = match.rect;
+      const left = (rect.left - info.rect.left) / scale;
+      const top = (rect.top - info.rect.top) / scale;
+      const width = rect.width / scale;
+      const height = rect.height / scale;
+      if (width < 4 || height < 4) continue;
+
+      node.style.left = `${this.roundCssPx(left)}px`;
+      node.style.top = `${this.roundCssPx(top)}px`;
+      node.style.width = `${this.roundCssPx(width)}px`;
+      node.style.height = `${this.roundCssPx(height)}px`;
+      node.style.transform = "none";
+      node.dataset.measuredHitbox = "true";
+      node.classList.add("rendered-hitbox");
+    }
+  }
+
+  renderedElementInfos(card) {
+    const root = card?.shadowRoot || card;
+    return this.deepQueryAll(root, ".element")
+      .map((element, index) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          index,
+          element,
+          rect,
+          left: element.style.left || "",
+          top: element.style.top || "",
+          width: element.style.width || "",
+          height: element.style.height || "",
+          transform: element.style.transform || "",
+        };
+      })
+      .filter((item) => item.rect.width >= 4 && item.rect.height >= 4);
+  }
+
+  bestRenderedElementMatch(node, renderedElements, used) {
+    const left = node.dataset.styleLeft || "";
+    const top = node.dataset.styleTop || "";
+    if (!left && !top) return null;
+
+    let best = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const item of renderedElements) {
+      if (used.has(item.index)) continue;
+      const positionScore =
+        this.styleValueDistance(left, item.left) * 20 +
+        this.styleValueDistance(top, item.top) * 20;
+      if (positionScore > 8) continue;
+
+      const sizeScore =
+        this.styleValueDistance(node.dataset.styleWidth || "", item.width) +
+        this.styleValueDistance(node.dataset.styleHeight || "", item.height);
+      const transformScore = this.normalizedCssValue(node.dataset.styleTransform || "") ===
+        this.normalizedCssValue(item.transform || "")
+        ? 0
+        : 0.5;
+      const score = positionScore + sizeScore + transformScore;
+      if (score < bestScore) {
+        best = item;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  styleValueDistance(left, right) {
+    const a = this.normalizedCssValue(left);
+    const b = this.normalizedCssValue(right);
+    if (!a && !b) return 0;
+    if (a === b) return 0;
+
+    const aNum = this.percentToNumber(a);
+    const bNum = this.percentToNumber(b);
+    if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
+      return Math.abs(aNum - bNum);
+    }
+    return a && b ? 6 : 12;
+  }
+
+  normalizedCssValue(value) {
+    return String(value || "").replace(/\s+/g, "").trim().toLowerCase();
+  }
+
+  roundCssPx(value) {
+    return Math.round(value * 10) / 10;
   }
 
   deepQuery(root, selector) {
@@ -854,11 +1028,30 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return null;
   }
 
+  deepQueryAll(root, selector, seen = new Set()) {
+    const matches = [];
+    const add = (node) => {
+      if (!seen.has(node)) {
+        seen.add(node);
+        matches.push(node);
+      }
+    };
+
+    root.querySelectorAll?.(selector).forEach(add);
+    const nodes = root.querySelectorAll?.("*") || [];
+    for (const node of nodes) {
+      if (node.shadowRoot) {
+        this.deepQueryAll(node.shadowRoot, selector, seen).forEach(add);
+      }
+    }
+    return matches;
+  }
+
   applyOverlayBounds(overlay, left, top, width, height) {
-    overlay.style.left = `${Math.round(left)}px`;
-    overlay.style.top = `${Math.round(top)}px`;
-    overlay.style.width = `${Math.round(width)}px`;
-    overlay.style.height = `${Math.round(height)}px`;
+    overlay.style.left = `${this.roundCssPx(left)}px`;
+    overlay.style.top = `${this.roundCssPx(top)}px`;
+    overlay.style.width = `${this.roundCssPx(width)}px`;
+    overlay.style.height = `${this.roundCssPx(height)}px`;
   }
 
   resetOverlayBounds() {
@@ -878,7 +1071,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const image = this.imageUrl(card.image);
     const dashboardUrl = this.dashboardPreviewUrl(card.preview_url);
     const visibleCount = card.elements.filter((element) =>
-      this.hasPosition((element.config || {}).style || {})
+      this.hasPosition((element.config || {}).style || {}) &&
+      this.isElementConditionActive(element)
     ).length;
     const dimensions = this.previewDimensions();
     const presetGroups = this.previewPresets().reduce((groups, preset) => {
@@ -909,6 +1103,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
             style="left:${left};top:${top};${width}${height}${opacity}${zIndex}${transform}"
             data-card-index="${this.state.cardIndex}"
             data-element-index="${index}"
+            data-style-left="${this.escape(style.left || "")}"
+            data-style-top="${this.escape(style.top || "")}"
+            data-style-width="${this.escape(style.width || "")}"
+            data-style-height="${this.escape(style.height || "")}"
+            data-style-transform="${this.escape(style.transform || "")}"
             title="${this.escape(this.displayLabel(element))}"
           >
             ${this.renderElementContent(element)}
@@ -1127,7 +1326,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const items = this.filteredElements();
     if (!card) return "";
     const totalPositioned = card.elements.filter((element) =>
-      this.hasPosition((element.config || {}).style || {})
+      this.hasPosition((element.config || {}).style || {}) &&
+      this.isElementConditionActive(element)
     ).length;
 
     return `
@@ -1736,6 +1936,10 @@ const styles = `
   }
 
   .plan-element.click-through {
+    pointer-events: none;
+  }
+
+  .plan-element.not-rendered {
     pointer-events: none;
   }
 
