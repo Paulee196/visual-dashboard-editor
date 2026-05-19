@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.19";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v16";
+const UI_VERSION = "0.2.20";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v17";
 
 const TRANSLATIONS = {
   cs: {
@@ -14,6 +14,8 @@ const TRANSLATIONS = {
     "status.savedWithBackup": "Uloženo. Backup: {path}",
     "status.saved": "Uloženo.",
     "status.moved": "Prvek posunut, ještě uložit.",
+    "status.undo": "Vráceno: {name}",
+    "status.undoEmpty": "Není co vrátit.",
     "status.yamlDirty": "YAML fragment je upravený, ještě uložit.",
     "status.realRenderFailed": "Reálné vykreslení se nepovedlo, používám nouzový náhled: {error}",
     "error.apiNotReady": "Home Assistant API ještě není připravené.",
@@ -26,6 +28,8 @@ const TRANSLATIONS = {
     "ui.previewScale": "Měřítko náhledu",
     "ui.fitWhole": "Vejít celé",
     "ui.actualCssPx": "1:1 CSS px",
+    "ui.showHitboxes": "Zobrazit klikací plochy",
+    "ui.showHitboxesTitle": "Zobrazí reálné neviditelné plochy, které editor používá pro klikání.",
     "ui.positionedCount": "{width} x {height} CSS px - {count} prvků s pozicí",
     "ui.officialPreview": "Oficiální náhled dashboardu",
     "ui.missingImage": "Karta nemá obrázek v poli image.",
@@ -34,6 +38,8 @@ const TRANSLATIONS = {
     "ui.inspectorHelp": "Klikni na prvek v náhledu. Tady se objeví jeho pozice, velikost a kódový fragment.",
     "ui.line": "řádek {line}",
     "ui.save": "Uložit",
+    "ui.undo": "Zpět",
+    "ui.undoTitle": "Vrátit poslední změnu",
     "ui.entity": "Entity",
     "ui.icon": "Ikona",
     "ui.leftPercent": "Vlevo %",
@@ -44,6 +50,14 @@ const TRANSLATIONS = {
     "ui.zIndex": "Z-index",
     "ui.transform": "Transform",
     "ui.image": "Image",
+    "ui.nudge": "Posun",
+    "ui.nudgeFine": "Jemně 0,1 %",
+    "ui.nudgeCoarse": "Rychle 1 %",
+    "ui.nudgeLeft": "Posunout vlevo",
+    "ui.nudgeRight": "Posunout vpravo",
+    "ui.nudgeUp": "Posunout nahoru",
+    "ui.nudgeDown": "Posunout dolů",
+    "ui.keyboardNudgeHelp": "Šipky posouvají o 0,1 %, Shift + šipky o 1 %.",
     "ui.advancedYaml": "Pokročilý YAML fragment",
     "ui.expandEditor": "Zvětšit editor",
     "ui.saveYamlFragment": "Uložit YAML fragment",
@@ -56,6 +70,12 @@ const TRANSLATIONS = {
     "ui.dashboardHelp": "Editor zobrazuje jen dashboardy, ve kterých našel kartu picture-elements.",
     "ui.elements": "Prvky",
     "ui.searchElement": "Hledat prvek",
+    "filter.all": "Vše",
+    "filter.visible": "Viditelné teď",
+    "filter.hotspots": "Hotspoty",
+    "filter.widgets": "Text/widgety",
+    "filter.images": "Obrázky",
+    "filter.conditional": "Podmíněné",
     "file.cards": "{count} karet",
     "file.ui": "UI",
     "file.uiDashboard": "UI dashboard",
@@ -104,6 +124,8 @@ const TRANSLATIONS = {
     "status.savedWithBackup": "Saved. Backup: {path}",
     "status.saved": "Saved.",
     "status.moved": "Element moved, save still needed.",
+    "status.undo": "Restored: {name}",
+    "status.undoEmpty": "Nothing to undo.",
     "status.yamlDirty": "YAML fragment edited, save still needed.",
     "status.realRenderFailed": "Real rendering failed, using fallback preview: {error}",
     "error.apiNotReady": "Home Assistant API is not ready yet.",
@@ -116,6 +138,8 @@ const TRANSLATIONS = {
     "ui.previewScale": "Preview scale",
     "ui.fitWhole": "Fit whole",
     "ui.actualCssPx": "1:1 CSS px",
+    "ui.showHitboxes": "Show click areas",
+    "ui.showHitboxesTitle": "Shows the real invisible areas the editor uses for clicking.",
     "ui.positionedCount": "{width} x {height} CSS px - {count} positioned elements",
     "ui.officialPreview": "Official dashboard preview",
     "ui.missingImage": "The card has no image field.",
@@ -124,6 +148,8 @@ const TRANSLATIONS = {
     "ui.inspectorHelp": "Click an element in the preview. Its position, size and code fragment will appear here.",
     "ui.line": "line {line}",
     "ui.save": "Save",
+    "ui.undo": "Undo",
+    "ui.undoTitle": "Undo the last change",
     "ui.entity": "Entity",
     "ui.icon": "Icon",
     "ui.leftPercent": "Left %",
@@ -134,6 +160,14 @@ const TRANSLATIONS = {
     "ui.zIndex": "Z-index",
     "ui.transform": "Transform",
     "ui.image": "Image",
+    "ui.nudge": "Nudge",
+    "ui.nudgeFine": "Fine 0.1%",
+    "ui.nudgeCoarse": "Fast 1%",
+    "ui.nudgeLeft": "Move left",
+    "ui.nudgeRight": "Move right",
+    "ui.nudgeUp": "Move up",
+    "ui.nudgeDown": "Move down",
+    "ui.keyboardNudgeHelp": "Arrow keys move by 0.1%, Shift + arrows by 1%.",
     "ui.advancedYaml": "Advanced YAML fragment",
     "ui.expandEditor": "Expand editor",
     "ui.saveYamlFragment": "Save YAML fragment",
@@ -146,6 +180,12 @@ const TRANSLATIONS = {
     "ui.dashboardHelp": "The editor shows only dashboards where it found a picture-elements card.",
     "ui.elements": "Elements",
     "ui.searchElement": "Search element",
+    "filter.all": "All",
+    "filter.visible": "Visible now",
+    "filter.hotspots": "Hotspots",
+    "filter.widgets": "Text/widgets",
+    "filter.images": "Images",
+    "filter.conditional": "Conditional",
     "file.cards": "{count} cards",
     "file.ui": "UI",
     "file.uiDashboard": "UI dashboard",
@@ -194,6 +234,8 @@ const TRANSLATIONS = {
     "status.savedWithBackup": "Gespeichert. Backup: {path}",
     "status.saved": "Gespeichert.",
     "status.moved": "Element verschoben, Speichern ist noch nötig.",
+    "status.undo": "Wiederhergestellt: {name}",
+    "status.undoEmpty": "Nichts zum Rückgängig machen.",
     "status.yamlDirty": "YAML-Fragment geändert, Speichern ist noch nötig.",
     "status.realRenderFailed": "Echtes Rendering fehlgeschlagen, Fallback-Vorschau wird verwendet: {error}",
     "error.apiNotReady": "Die Home Assistant API ist noch nicht bereit.",
@@ -206,6 +248,8 @@ const TRANSLATIONS = {
     "ui.previewScale": "Vorschaumaßstab",
     "ui.fitWhole": "Ganz einpassen",
     "ui.actualCssPx": "1:1 CSS px",
+    "ui.showHitboxes": "Klickflächen anzeigen",
+    "ui.showHitboxesTitle": "Zeigt die echten unsichtbaren Flächen, die der Editor zum Klicken verwendet.",
     "ui.positionedCount": "{width} x {height} CSS px - {count} positionierte Elemente",
     "ui.officialPreview": "Offizielle Dashboard-Vorschau",
     "ui.missingImage": "Die Karte hat kein image-Feld.",
@@ -214,6 +258,8 @@ const TRANSLATIONS = {
     "ui.inspectorHelp": "Klicke ein Element in der Vorschau an. Position, Größe und Codefragment erscheinen hier.",
     "ui.line": "Zeile {line}",
     "ui.save": "Speichern",
+    "ui.undo": "Rückgängig",
+    "ui.undoTitle": "Letzte Änderung rückgängig machen",
     "ui.entity": "Entität",
     "ui.icon": "Icon",
     "ui.leftPercent": "Links %",
@@ -224,6 +270,14 @@ const TRANSLATIONS = {
     "ui.zIndex": "Z-index",
     "ui.transform": "Transform",
     "ui.image": "Image",
+    "ui.nudge": "Verschieben",
+    "ui.nudgeFine": "Fein 0,1 %",
+    "ui.nudgeCoarse": "Schnell 1 %",
+    "ui.nudgeLeft": "Nach links verschieben",
+    "ui.nudgeRight": "Nach rechts verschieben",
+    "ui.nudgeUp": "Nach oben verschieben",
+    "ui.nudgeDown": "Nach unten verschieben",
+    "ui.keyboardNudgeHelp": "Pfeiltasten verschieben um 0,1 %, Shift + Pfeiltasten um 1 %.",
     "ui.advancedYaml": "Erweitertes YAML-Fragment",
     "ui.expandEditor": "Editor vergrößern",
     "ui.saveYamlFragment": "YAML-Fragment speichern",
@@ -236,6 +290,12 @@ const TRANSLATIONS = {
     "ui.dashboardHelp": "Der Editor zeigt nur Dashboards, in denen eine picture-elements-Karte gefunden wurde.",
     "ui.elements": "Elemente",
     "ui.searchElement": "Element suchen",
+    "filter.all": "Alle",
+    "filter.visible": "Jetzt sichtbar",
+    "filter.hotspots": "Hotspots",
+    "filter.widgets": "Text/Widgets",
+    "filter.images": "Bilder",
+    "filter.conditional": "Bedingt",
     "file.cards": "{count} Karten",
     "file.ui": "UI",
     "file.uiDashboard": "UI-Dashboard",
@@ -289,9 +349,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
       advancedDirty: false,
       advancedExpanded: false,
       elementFilter: "",
+      elementTypeFilter: "visible",
       previewSize: "display-24",
       previewOrientation: "landscape",
       previewScaleMode: "fit",
+      showHitboxes: false,
+      undoStack: [],
       dirty: false,
       loading: false,
       statusKey: "status.selectDashboard",
@@ -345,13 +408,16 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   connectedCallback() {
     this._onResize = () => this.syncPreviewFit();
+    this._onKeyDown = (event) => this.handleKeyDown(event);
     window.addEventListener("resize", this._onResize);
+    window.addEventListener("keydown", this._onKeyDown);
     this.render();
     this.loadFiles();
   }
 
   disconnectedCallback() {
     window.removeEventListener("resize", this._onResize);
+    window.removeEventListener("keydown", this._onKeyDown);
     this._frameResizeObserver?.disconnect();
     this._overlaySyncTimer && clearInterval(this._overlaySyncTimer);
   }
@@ -400,6 +466,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       });
       this.state.cards = result.cards || [];
       this.state.cardIndex = 0;
+      this.state.undoStack = [];
       this.state.dirty = false;
       this.setStatus(
         this.state.cards.length ? "status.loadedCards" : "status.loadedNoPicture",
@@ -453,6 +520,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   updateField(path, value) {
     const element = this.currentElement();
     if (!element) return;
+    this.pushUndo(element);
     const parts = path.split(".");
     let target = element.config;
     while (parts.length > 1) {
@@ -483,6 +551,131 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.updateField(path, Number.isFinite(numeric) ? String(numeric) : "");
   }
 
+  pushUndo(element = this.currentElement()) {
+    if (!element) return;
+    const snapshot = {
+      path: [...element.path],
+      config: this.cloneConfig(element.config),
+      advancedText: element.fragment || "",
+      label: this.displayLabel(element),
+    };
+    const signature = JSON.stringify(snapshot);
+    const last = this.state.undoStack[this.state.undoStack.length - 1];
+    if (last?.signature === signature) return;
+    this.state.undoStack = [
+      ...this.state.undoStack,
+      { ...snapshot, signature },
+    ].slice(-30);
+  }
+
+  undoLastChange() {
+    const snapshot = this.state.undoStack.pop();
+    if (!snapshot) {
+      this.setStatus("status.undoEmpty");
+      this.render();
+      return;
+    }
+
+    const card = this.currentCard();
+    const element = card?.elements?.find((candidate) =>
+      this.samePath(candidate.path, snapshot.path)
+    );
+    if (!element) {
+      this.setStatus("status.undoEmpty");
+      this.render();
+      return;
+    }
+
+    element.config = this.cloneConfig(snapshot.config);
+    element.fragment = snapshot.advancedText || "";
+    this.state.selectedElementPath = [...snapshot.path];
+    this.state.advancedText = element.fragment || "";
+    this.state.advancedDirty = false;
+    this.state.dirty = true;
+    this.setStatus("status.undo", { name: snapshot.label || this.displayLabel(element) });
+    this.render();
+  }
+
+  nudgeSelected(dx, dy, step = 0.1) {
+    const element = this.currentElement();
+    if (!element) return;
+    this.pushUndo(element);
+    this.applyNudge(element, dx * step, dy * step);
+  }
+
+  applyNudge(element, dx, dy) {
+    const style = element.config.style || {};
+    const currentLeft = Number.parseFloat(this.percentToNumber(style.left));
+    const currentTop = Number.parseFloat(this.percentToNumber(style.top));
+    const left = Number.isFinite(currentLeft) ? currentLeft : 50;
+    const top = Number.isFinite(currentTop) ? currentTop : 50;
+    const leftText = `${this.clamp(left + dx, 0, 100).toFixed(1)}%`;
+    const topText = `${this.clamp(top + dy, 0, 100).toFixed(1)}%`;
+
+    element.config.style = element.config.style || {};
+    element.config.style.left = leftText;
+    element.config.style.top = topText;
+    this.state.dirty = true;
+    this.setStatus("status.moved");
+    this.updateSelectedElementDom(element, leftText, topText);
+  }
+
+  updateSelectedElementDom(element, leftText, topText) {
+    const cardIndex = this.state.cardIndex;
+    const card = this.currentCard();
+    const elementIndex = card?.elements?.findIndex((candidate) =>
+      this.samePath(candidate.path, element.path)
+    );
+    if (!Number.isInteger(elementIndex) || elementIndex < 0) return;
+
+    const node = this.shadowRoot.querySelector(
+      `.plan-element[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"]`
+    );
+    if (node) {
+      node.style.left = leftText;
+      node.style.top = topText;
+      node.dataset.styleLeft = leftText;
+      node.dataset.styleTop = topText;
+      node.style.transform = element.config.style?.transform || "translate(-50%, -50%)";
+      node.classList.remove("rendered-hitbox");
+    }
+    const leftInput = this.shadowRoot.querySelector('[data-percent-field="style.left"]');
+    const topInput = this.shadowRoot.querySelector('[data-percent-field="style.top"]');
+    if (leftInput) leftInput.value = Number.parseFloat(leftText);
+    if (topInput) topInput.value = Number.parseFloat(topText);
+    const status = this.shadowRoot.querySelector(".topbar p");
+    if (status) status.textContent = this.statusText();
+    const undo = this.shadowRoot.querySelector("#undoChange");
+    if (undo) undo.disabled = !this.state.undoStack.length;
+  }
+
+  handleKeyDown(event) {
+    if (!this.currentElement()) return;
+    if (this.isTextEditingTarget(event.target)) return;
+
+    const arrows = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    };
+    const delta = arrows[event.key];
+    if (!delta) return;
+
+    event.preventDefault();
+    this.nudgeSelected(delta[0], delta[1], event.shiftKey ? 1 : 0.1);
+  }
+
+  isTextEditingTarget(target) {
+    const tag = String(target?.tagName || "").toLowerCase();
+    return (
+      tag === "input" ||
+      tag === "textarea" ||
+      tag === "select" ||
+      target?.isContentEditable
+    );
+  }
+
   async saveSelected(useAdvanced = false) {
     const element = this.currentElement();
     if (!element || !this.state.selectedFile) return;
@@ -504,6 +697,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.cards = result.cards || [];
       this.state.dirty = false;
       this.state.advancedDirty = false;
+      this.state.undoStack = [];
       this.setStatus(
         result.backup_path ? "status.savedWithBackup" : "status.saved",
         { path: result.backup_path || "" }
@@ -545,6 +739,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const move = (moveEvent) => {
       const distance = Math.hypot(moveEvent.clientX - startClientX, moveEvent.clientY - startClientY);
       if (!dragging && distance < 4) return;
+      if (!dragging) this.pushUndo(element);
       dragging = true;
 
       const pointer = this.pointerToStagePercent(moveEvent, rect);
@@ -973,12 +1168,30 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return card.elements
       .map((element, index) => ({ element, index }))
       .filter(({ element }) => this.hasPosition((element.config || {}).style || {}))
-      .filter(({ element }) => this.isElementConditionActive(element))
+      .filter(({ element }) => this.elementMatchesTypeFilter(element))
       .filter(({ element }) => {
         if (!query) return true;
         const haystack = `${this.displayLabel(element)} ${element.label} ${this.elementSummary(element)}`.toLowerCase();
         return haystack.includes(query);
       });
+  }
+
+  elementMatchesTypeFilter(element) {
+    const filter = this.state.elementTypeFilter || "visible";
+    const config = element.config || {};
+    const style = config.style || {};
+    const kind = this.elementKind(config);
+    const conditional = Boolean(element.parent || config.type === "conditional");
+
+    if (filter === "all") return true;
+    if (filter === "visible") return this.isElementConditionActive(element);
+    if (filter === "hotspots") return kind === "hotspot";
+    if (filter === "widgets") {
+      return ["widget", "calendar", "stack", "label", "icon"].includes(kind) && !this.isTransparentCard(config);
+    }
+    if (filter === "images") return kind === "image";
+    if (filter === "conditional") return conditional || !this.isElementConditionActive(element);
+    return this.hasPosition(style);
   }
 
   hasPosition(style) {
@@ -1560,11 +1773,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <option value="fit" ${this.state.previewScaleMode === "fit" ? "selected" : ""}>${this.escape(this.t("ui.fitWhole"))}</option>
           <option value="actual" ${this.state.previewScaleMode === "actual" ? "selected" : ""}>${this.escape(this.t("ui.actualCssPx"))}</option>
         </select>
+        <label class="hitbox-toggle" title="${this.escape(this.t("ui.showHitboxesTitle"))}">
+          <input id="showHitboxes" type="checkbox" ${this.state.showHitboxes ? "checked" : ""}>
+          ${this.escape(this.t("ui.showHitboxes"))}
+        </label>
         <span>${this.escape(this.t("ui.positionedCount", { width: dimensions.width, height: dimensions.height, count: visibleCount }))}</span>
       </div>
       <div class="preview-frame scale-${this.escape(this.state.previewScaleMode)}">
         <div id="previewFit" class="preview-fit">
-          <div class="plan-stage" style="width:${dimensions.width}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
+          <div class="plan-stage ${this.state.showHitboxes ? "show-hitboxes" : ""}" style="width:${dimensions.width}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
             ${
               dashboardUrl
                 ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="${this.escape(this.t("ui.officialPreview"))}"></iframe>`
@@ -1607,7 +1824,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
             <h2>${this.escape(this.displayLabel(element))}</h2>
             <p>${this.escape(config.card_type || config.type || "element")}${element.line ? ` - ${this.escape(this.t("ui.line", { line: element.line }))}` : ""}</p>
           </div>
-          <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.save"))}</button>
+          <div class="inspector-actions">
+            <button id="undoChange" type="button" title="${this.escape(this.t("ui.undoTitle"))}" ${this.state.undoStack.length ? "" : "disabled"}>${this.escape(this.t("ui.undo"))}</button>
+            <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.save"))}</button>
+          </div>
         </div>
 
         <div class="field-grid">
@@ -1645,6 +1865,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
           </label>
         </div>
 
+        <section class="nudge-panel">
+          <div class="nudge-head">
+            <h3>${this.escape(this.t("ui.nudge"))}</h3>
+            <p>${this.escape(this.t("ui.keyboardNudgeHelp"))}</p>
+          </div>
+          ${this.renderNudgeGroup("0.1", this.t("ui.nudgeFine"))}
+          ${this.renderNudgeGroup("1", this.t("ui.nudgeCoarse"))}
+        </section>
+
         <label class="wide-field">
           ${this.escape(this.t("ui.transform"))}
           <input data-field="style.transform" value="${this.escape(style.transform || "")}" placeholder="translate(-50%, -50%) scale(1.1)">
@@ -1664,6 +1893,38 @@ class VisualDashboardEditorPanel extends HTMLElement {
           </div>
         </details>
       </section>
+    `;
+  }
+
+  renderNudgeGroup(step, label) {
+    const buttons = [
+      ["ui.nudgeLeft", "mdi:arrow-left", -1, 0],
+      ["ui.nudgeUp", "mdi:arrow-up", 0, -1],
+      ["ui.nudgeDown", "mdi:arrow-down", 0, 1],
+      ["ui.nudgeRight", "mdi:arrow-right", 1, 0],
+    ];
+    return `
+      <div class="nudge-group">
+        <span>${this.escape(label)}</span>
+        <div class="nudge-buttons">
+          ${buttons
+            .map(
+              ([titleKey, icon, dx, dy]) => `
+                <button
+                  class="icon-button"
+                  type="button"
+                  title="${this.escape(this.t(titleKey))}"
+                  data-nudge-step="${this.escape(step)}"
+                  data-nudge-x="${dx}"
+                  data-nudge-y="${dy}"
+                >
+                  <ha-icon icon="${icon}"></ha-icon>
+                </button>
+              `
+            )
+            .join("")}
+        </div>
+      </div>
     `;
   }
 
@@ -1734,13 +1995,23 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return String(value || "").replace(/\(UI dashboard\)/i, `(${this.t("file.uiDashboard")})`);
   }
 
+  elementTypeFilterOptions() {
+    return [
+      ["visible", this.t("filter.visible")],
+      ["all", this.t("filter.all")],
+      ["hotspots", this.t("filter.hotspots")],
+      ["widgets", this.t("filter.widgets")],
+      ["images", this.t("filter.images")],
+      ["conditional", this.t("filter.conditional")],
+    ];
+  }
+
   renderElementList() {
     const card = this.currentCard();
     const items = this.filteredElements();
     if (!card) return "";
     const totalPositioned = card.elements.filter((element) =>
-      this.hasPosition((element.config || {}).style || {}) &&
-      this.isElementConditionActive(element)
+      this.hasPosition((element.config || {}).style || {})
     ).length;
 
     return `
@@ -1755,6 +2026,21 @@ class VisualDashboardEditorPanel extends HTMLElement {
           value="${this.escape(this.state.elementFilter)}"
           placeholder="${this.escape(this.t("ui.searchElement"))}"
         >
+        <div class="element-filter-tabs">
+          ${this.elementTypeFilterOptions()
+            .map(
+              ([value, label]) => `
+                <button
+                  class="${this.state.elementTypeFilter === value ? "selected" : ""}"
+                  type="button"
+                  data-element-type-filter="${this.escape(value)}"
+                >
+                  ${this.escape(label)}
+                </button>
+              `
+            )
+            .join("")}
+        </div>
         <div class="element-list-items">
           ${items
             .map(({ element, index }) => {
@@ -1824,6 +2110,13 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.render();
     });
 
+    this.shadowRoot.querySelectorAll("[data-element-type-filter]").forEach((node) => {
+      node.addEventListener("click", () => {
+        this.state.elementTypeFilter = node.dataset.elementTypeFilter || "visible";
+        this.render();
+      });
+    });
+
     const cardSelect = this.shadowRoot.querySelector("#cardSelect");
     cardSelect?.addEventListener("change", (event) => {
       this.state.cardIndex = Number.parseInt(event.target.value, 10) || 0;
@@ -1848,6 +2141,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const previewScaleMode = this.shadowRoot.querySelector("#previewScaleMode");
     previewScaleMode?.addEventListener("change", (event) => {
       this.state.previewScaleMode = event.target.value;
+      this.render();
+    });
+
+    this.shadowRoot.querySelector("#showHitboxes")?.addEventListener("change", (event) => {
+      this.state.showHitboxes = event.target.checked;
       this.render();
     });
 
@@ -1893,8 +2191,20 @@ class VisualDashboardEditorPanel extends HTMLElement {
       .querySelector("#saveElement")
       ?.addEventListener("click", () => this.saveSelected(false));
     this.shadowRoot
+      .querySelector("#undoChange")
+      ?.addEventListener("click", () => this.undoLastChange());
+    this.shadowRoot
       .querySelector("#saveAdvanced")
       ?.addEventListener("click", () => this.saveSelected(true));
+
+    this.shadowRoot.querySelectorAll("[data-nudge-step]").forEach((node) => {
+      node.addEventListener("click", () => {
+        const dx = Number.parseFloat(node.dataset.nudgeX || "0");
+        const dy = Number.parseFloat(node.dataset.nudgeY || "0");
+        const step = Number.parseFloat(node.dataset.nudgeStep || "0.1");
+        this.nudgeSelected(dx, dy, Number.isFinite(step) ? step : 0.1);
+      });
+    });
 
     this.shadowRoot.querySelector("#openAdvancedModal")?.addEventListener("click", () => {
       this.state.advancedExpanded = true;
@@ -1979,6 +2289,12 @@ const styles = `
 
   h2 {
     font-size: 15px;
+    font-weight: 700;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 13px;
     font-weight: 700;
   }
 
@@ -2094,6 +2410,26 @@ const styles = `
     margin-bottom: 8px;
   }
 
+  .element-filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .element-filter-tabs button {
+    min-height: 28px;
+    padding: 4px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+  }
+
+  .element-filter-tabs button.selected {
+    border-color: var(--vde-accent);
+    background: color-mix(in srgb, var(--vde-accent) 14%, transparent);
+    color: var(--vde-text);
+  }
+
   .element-list-items {
     display: grid;
     gap: 6px;
@@ -2198,6 +2534,21 @@ const styles = `
 
   #previewScaleMode {
     flex: 0 0 128px;
+  }
+
+  .hitbox-toggle {
+    min-height: 36px;
+    display: inline-flex;
+    grid-template-columns: none;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    color: var(--vde-text);
+  }
+
+  .hitbox-toggle input {
+    width: auto;
+    min-height: 0;
   }
 
   .preview-toolbar span {
@@ -2364,6 +2715,23 @@ const styles = `
     z-index: 1000 !important;
   }
 
+  .plan-stage.show-hitboxes .plan-element:not(.click-through):not(.not-rendered) {
+    background: rgba(0, 153, 255, 0.14);
+    outline: 1px solid rgba(0, 176, 255, 0.72);
+    outline-offset: -1px;
+    border-radius: 5px;
+  }
+
+  .plan-stage.show-hitboxes .plan-element.selected:not(.click-through):not(.not-rendered) {
+    background: rgba(255, 176, 0, 0.16);
+    outline-color: rgba(255, 176, 0, 0.9);
+  }
+
+  .plan-stage.show-hitboxes .plan-element .element-chip {
+    opacity: 0.88;
+    transform: translateY(0);
+  }
+
   .element-chip {
     display: inline-flex;
     align-items: center;
@@ -2472,6 +2840,13 @@ const styles = `
     pointer-events: none;
   }
 
+  .inspector-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
   .field-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2491,6 +2866,57 @@ const styles = `
 
   .wide-field {
     margin-top: 10px;
+  }
+
+  .nudge-panel {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid var(--vde-line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--vde-panel) 92%, var(--vde-accent));
+  }
+
+  .nudge-head {
+    display: grid;
+    gap: 2px;
+    margin-bottom: 8px;
+  }
+
+  .nudge-head p {
+    color: var(--vde-muted);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .nudge-group {
+    display: grid;
+    grid-template-columns: minmax(82px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .nudge-group > span {
+    color: var(--vde-muted);
+    font-size: 12px;
+  }
+
+  .nudge-buttons {
+    display: flex;
+    gap: 5px;
+  }
+
+  .icon-button {
+    width: 34px;
+    min-height: 34px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+  }
+
+  .icon-button ha-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .advanced {

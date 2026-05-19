@@ -21,6 +21,10 @@ Po instalaci a restartu můžeš integraci rovnou přidat tady:
 - po kliknutí na prvek zobrazí inspector
 - umí upravit `entity`, `icon`, `image`, `style.left`, `style.top`, `style.width`, `style.height`, `style.opacity`, `style.z-index` a `style.transform`
 - umí prvek posouvat myší přímo v náhledu
+- umí zobrazit reálné klikací plochy pro ladění výběru prvků
+- umí jemně posouvat vybraný prvek tlačítky nebo klávesovými šipkami
+- umí vrátit poslední lokální změnu před uložením
+- umí filtrovat seznam prvků podle viditelnosti, hotspotů, widgetů, obrázků a podmínek
 - umí zobrazit a uložit YAML fragment vybraného prvku
 - před uložením dělá backup do `.visual_dashboard_editor_backups`
 
@@ -71,8 +75,12 @@ Home Assistant umí vlastní panely a vlastní karty přes frontend custom eleme
 
 - přesnější měření mobilních viewportů
 - resize handles přímo v náhledu
-- undo/redo
+- redo
 - diff před uložením
 - vyhledávání prvků podle entity
 - podpora `custom:config-template-card`
 - volitelný frontend resource, který přidá malé `Visual edit` tlačítko přímo do dashboardu
+
+## Pomoc Přes AI
+
+Pro asistenty je v repozitáři připravený krátký návod: [AI_ASSISTANT_GUIDE.md](docs/AI_ASSISTANT_GUIDE.md). Popisuje, jaké informace si má AI od uživatele vyžádat a jak bezpečně pomáhat s úpravami jednotlivých prvků.

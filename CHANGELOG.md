@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.20
+
+- Add a `Show click areas` toggle that visualizes the real editor hitboxes when selection feels off.
+- Add inspector nudge controls for moving the selected element by 0.1% or 1%, plus keyboard arrow support.
+- Add undo for the last local edit before saving.
+- Add element list filters for visible elements, hotspots, widgets, images and conditional elements.
+- Add an AI assistant guide with the context an assistant should ask for when helping users edit a dashboard.
+
 ## 0.2.19
 
 - Add frontend localization that follows the Home Assistant language setting via `hass.locale.language`.
