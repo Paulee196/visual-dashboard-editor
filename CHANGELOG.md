@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.21
+
+- Keep locally edited element position and size active in the editor preview until the element is saved, so nudge buttons and percent fields visibly move the selected element immediately.
+- Apply local style changes to the rendered Lovelace preview when possible, instead of letting the periodic hitbox measurement snap the element back to the saved dashboard state.
+- Allow positioned `image` layers with `pointer-events: none` to stay selectable in the editor, which makes large decorative/editable panels such as a left sidebar image adjustable again.
+- Add simple inspector controls for `style.color` and `style.background` with both a color picker and a CSS text value.
+
 ## 0.2.20
 
 - Add a `Show click areas` toggle that visualizes the real editor hitboxes when selection feels off.

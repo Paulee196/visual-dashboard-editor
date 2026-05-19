@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.20";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v17";
+const UI_VERSION = "0.2.21";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v18";
 
 const TRANSLATIONS = {
   cs: {
@@ -48,6 +48,9 @@ const TRANSLATIONS = {
     "ui.heightPercent": "Výška %",
     "ui.opacity": "Průhlednost",
     "ui.zIndex": "Z-index",
+    "ui.color": "Barva textu / ikony",
+    "ui.background": "Barva pozadí",
+    "ui.colorPlaceholder": "#ffffff, red nebo var(...)",
     "ui.transform": "Transform",
     "ui.image": "Image",
     "ui.nudge": "Posun",
@@ -158,6 +161,9 @@ const TRANSLATIONS = {
     "ui.heightPercent": "Height %",
     "ui.opacity": "Opacity",
     "ui.zIndex": "Z-index",
+    "ui.color": "Text / icon color",
+    "ui.background": "Background color",
+    "ui.colorPlaceholder": "#ffffff, red or var(...)",
     "ui.transform": "Transform",
     "ui.image": "Image",
     "ui.nudge": "Nudge",
@@ -268,6 +274,9 @@ const TRANSLATIONS = {
     "ui.heightPercent": "Höhe %",
     "ui.opacity": "Deckkraft",
     "ui.zIndex": "Z-index",
+    "ui.color": "Text-/Icon-Farbe",
+    "ui.background": "Hintergrundfarbe",
+    "ui.colorPlaceholder": "#ffffff, red oder var(...)",
     "ui.transform": "Transform",
     "ui.image": "Image",
     "ui.nudge": "Verschieben",
@@ -361,6 +370,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
       statusParams: {},
       error: "",
     };
+    this._locallyEditedElementKeys = new Set();
+    this._locallyStyledElementKeys = new Set();
+    this._renderedElementIndexesByKey = new Map();
   }
 
   set hass(value) {
@@ -458,6 +470,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.selectedElementPath = null;
     this.state.advancedText = "";
     this.state.advancedDirty = false;
+    this.clearLocalEditTracking();
     this.render();
     try {
       const result = await this.callWS({
@@ -499,6 +512,52 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return left.every((part, index) => part === right[index]);
   }
 
+  pathKey(path) {
+    return Array.isArray(path) ? path.map((part) => String(part)).join("\u001f") : "";
+  }
+
+  clearLocalEditTracking() {
+    this._locallyEditedElementKeys = new Set();
+    this._locallyStyledElementKeys = new Set();
+    this._renderedElementIndexesByKey = new Map();
+  }
+
+  markElementLocallyEdited(element) {
+    const key = this.pathKey(element?.path);
+    if (key) this._locallyEditedElementKeys.add(key);
+  }
+
+  isElementLocallyEdited(element) {
+    const key = this.pathKey(element?.path);
+    return Boolean(key && this._locallyEditedElementKeys?.has(key));
+  }
+
+  markElementLocallyStyled(element) {
+    const key = this.pathKey(element?.path);
+    if (key) this._locallyStyledElementKeys.add(key);
+  }
+
+  isElementLocallyStyled(element) {
+    const key = this.pathKey(element?.path);
+    return Boolean(key && this._locallyStyledElementKeys?.has(key));
+  }
+
+  styleFieldAffectsGeometry(path) {
+    return ["style.left", "style.top", "style.width", "style.height", "style.transform"].includes(path);
+  }
+
+  rememberRenderedElementIndex(element, index) {
+    const key = this.pathKey(element?.path);
+    if (key && Number.isInteger(index)) {
+      this._renderedElementIndexesByKey.set(key, index);
+    }
+  }
+
+  rememberedRenderedElementIndex(element) {
+    const key = this.pathKey(element?.path);
+    return key ? this._renderedElementIndexesByKey?.get(key) : undefined;
+  }
+
   setSelectedElement(cardIndex, elementIndex) {
     const card = this.state.cards[cardIndex];
     const element = card && card.elements[elementIndex];
@@ -521,6 +580,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const element = this.currentElement();
     if (!element) return;
     this.pushUndo(element);
+    const isStyleField = path.startsWith("style.");
     const parts = path.split(".");
     let target = element.config;
     while (parts.length > 1) {
@@ -538,6 +598,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
     }
     this.state.dirty = true;
     this.setStatus("status.changesReady");
+    if (isStyleField) {
+      this.markElementLocallyStyled(element);
+      if (this.styleFieldAffectsGeometry(path)) {
+        this.markElementLocallyEdited(element);
+      }
+      this.updateSelectedElementDom(element);
+      return;
+    }
     this.render();
   }
 
@@ -592,6 +660,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.advancedText = element.fragment || "";
     this.state.advancedDirty = false;
     this.state.dirty = true;
+    this.markElementLocallyEdited(element);
+    this.markElementLocallyStyled(element);
     this.setStatus("status.undo", { name: snapshot.label || this.displayLabel(element) });
     this.render();
   }
@@ -616,11 +686,13 @@ class VisualDashboardEditorPanel extends HTMLElement {
     element.config.style.left = leftText;
     element.config.style.top = topText;
     this.state.dirty = true;
+    this.markElementLocallyEdited(element);
+    this.markElementLocallyStyled(element);
     this.setStatus("status.moved");
-    this.updateSelectedElementDom(element, leftText, topText);
+    this.updateSelectedElementDom(element);
   }
 
-  updateSelectedElementDom(element, leftText, topText) {
+  updateSelectedElementDom(element) {
     const cardIndex = this.state.cardIndex;
     const card = this.currentCard();
     const elementIndex = card?.elements?.findIndex((candidate) =>
@@ -632,21 +704,83 @@ class VisualDashboardEditorPanel extends HTMLElement {
       `.plan-element[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"]`
     );
     if (node) {
-      node.style.left = leftText;
-      node.style.top = topText;
-      node.dataset.styleLeft = leftText;
-      node.dataset.styleTop = topText;
-      node.style.transform = element.config.style?.transform || "translate(-50%, -50%)";
-      node.classList.remove("rendered-hitbox");
+      this.applyLocalOverlayStyle(node, element);
+      const rendered = this.renderedElementForOverlayNode(node, element);
+      if (rendered) this.applyLocalRenderedStyle(rendered, element);
     }
+    const style = element.config.style || {};
     const leftInput = this.shadowRoot.querySelector('[data-percent-field="style.left"]');
     const topInput = this.shadowRoot.querySelector('[data-percent-field="style.top"]');
-    if (leftInput) leftInput.value = Number.parseFloat(leftText);
-    if (topInput) topInput.value = Number.parseFloat(topText);
+    const widthInput = this.shadowRoot.querySelector('[data-percent-field="style.width"]');
+    const heightInput = this.shadowRoot.querySelector('[data-percent-field="style.height"]');
+    if (leftInput) leftInput.value = this.percentToNumber(style.left);
+    if (topInput) topInput.value = this.percentToNumber(style.top);
+    if (widthInput) widthInput.value = this.percentToNumber(style.width);
+    if (heightInput) heightInput.value = this.percentToNumber(style.height);
     const status = this.shadowRoot.querySelector(".topbar p");
     if (status) status.textContent = this.statusText();
     const undo = this.shadowRoot.querySelector("#undoChange");
     if (undo) undo.disabled = !this.state.undoStack.length;
+  }
+
+  renderedElementForOverlayNode(node, element) {
+    const indexFromNode = Number.parseInt(node?.dataset?.renderedIndex || "", 10);
+    const remembered = this.rememberedRenderedElementIndex(element);
+    const targetIndex = Number.isInteger(indexFromNode) ? indexFromNode : remembered;
+    if (!Number.isInteger(targetIndex)) return null;
+
+    const iframe = this.shadowRoot?.querySelector(".dashboard-frame");
+    const info = iframe ? this.renderedPictureCardInfoFromIframe(iframe) : null;
+    const host = this.shadowRoot?.querySelector("#realCardHost");
+    const card = info?.card || host?.firstElementChild;
+    if (!card) return null;
+
+    return this.renderedElementInfos(card).find((item) => item.index === targetIndex)?.element || null;
+  }
+
+  applyLocalOverlayStyle(node, element) {
+    const style = element.config.style || {};
+    node.style.left = this.cleanCssValue(style.left, "50%");
+    node.style.top = this.cleanCssValue(style.top, "50%");
+    node.style.transform = this.cleanCssValue(style.transform, "translate(-50%, -50%)");
+    this.setOptionalStyle(node, "width", style.width);
+    this.setOptionalStyle(node, "height", style.height);
+    this.setOptionalStyle(node, "z-index", style["z-index"] ?? style.zIndex);
+    node.dataset.styleLeft = style.left || "";
+    node.dataset.styleTop = style.top || "";
+    node.dataset.styleWidth = style.width || "";
+    node.dataset.styleHeight = style.height || "";
+    node.dataset.styleTransform = style.transform || "";
+    node.dataset.measuredHitbox = "false";
+    node.classList.remove("rendered-hitbox");
+  }
+
+  applyLocalRenderedStyle(renderedNode, element) {
+    const style = element.config.style || {};
+    this.setRenderedStyle(renderedNode, "left", style.left);
+    this.setRenderedStyle(renderedNode, "top", style.top);
+    this.setRenderedStyle(renderedNode, "width", style.width);
+    this.setRenderedStyle(renderedNode, "height", style.height);
+    this.setRenderedStyle(renderedNode, "transform", style.transform);
+    this.setRenderedStyle(renderedNode, "opacity", style.opacity);
+    this.setRenderedStyle(renderedNode, "color", style.color);
+    this.setRenderedStyle(renderedNode, "background", style.background);
+    this.setRenderedStyle(renderedNode, "background-color", style["background-color"]);
+    this.setRenderedStyle(renderedNode, "z-index", style["z-index"] ?? style.zIndex);
+  }
+
+  setOptionalStyle(node, property, value) {
+    if (!node) return;
+    if (value === undefined || value === null || value === "") {
+      node.style.removeProperty(property);
+      return;
+    }
+    node.style.setProperty(property, this.cleanCssValue(value));
+  }
+
+  setRenderedStyle(node, property, value) {
+    if (!node || value === undefined || value === null || value === "") return;
+    node.style.setProperty(property, this.cleanCssValue(value));
   }
 
   handleKeyDown(event) {
@@ -698,6 +832,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.dirty = false;
       this.state.advancedDirty = false;
       this.state.undoStack = [];
+      this.clearLocalEditTracking();
       this.setStatus(
         result.backup_path ? "status.savedWithBackup" : "status.saved",
         { path: result.backup_path || "" }
@@ -751,21 +886,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
       element.config.style.left = leftText;
       element.config.style.top = topText;
       this.state.dirty = true;
+      this.markElementLocallyEdited(element);
+      this.markElementLocallyStyled(element);
       this.setStatus("status.moved");
-
-      const node = this.shadowRoot.querySelector(
-        `.plan-element[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"]`
-      );
-      if (node) {
-        node.style.left = leftText;
-        node.style.top = topText;
-      }
-      const leftInput = this.shadowRoot.querySelector('[data-percent-field="style.left"]');
-      const topInput = this.shadowRoot.querySelector('[data-percent-field="style.top"]');
-      if (leftInput) leftInput.value = Number.parseFloat(leftText);
-      if (topInput) topInput.value = Number.parseFloat(topText);
-      const status = this.shadowRoot.querySelector(".topbar p");
-      if (status) status.textContent = this.statusText();
+      this.updateSelectedElementDom(element);
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
@@ -805,6 +929,21 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   cssValue(value, fallback = "") {
     return this.escape(value || fallback).replace(/;/g, "");
+  }
+
+  cleanCssValue(value, fallback = "") {
+    return String(value || fallback).replace(/;/g, "");
+  }
+
+  colorPickerValue(value) {
+    const raw = String(value || "").trim();
+    const full = raw.match(/^#([0-9a-f]{6})$/i);
+    if (full) return raw;
+    const short = raw.match(/^#([0-9a-f]{3})$/i);
+    if (short) {
+      return `#${short[1].split("").map((char) => `${char}${char}`).join("")}`;
+    }
+    return "#ffffff";
   }
 
   imageUrl(value) {
@@ -1296,7 +1435,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (style.width || style.height) classes.push("has-explicit-size");
     if (element.parent) classes.push("nested-element");
     if (!this.isElementConditionActive(element)) classes.push("not-rendered");
-    if (this.isClickThrough(style)) classes.push("click-through");
+    if (this.isClickThrough(style) && config.type !== "image") classes.push("click-through");
     return classes.join(" ");
   }
 
@@ -1539,6 +1678,21 @@ class VisualDashboardEditorPanel extends HTMLElement {
         continue;
       }
 
+      if (element && this.isElementLocallyEdited(element)) {
+        const remembered = Number.parseInt(
+          node.dataset.renderedIndex || `${this.rememberedRenderedElementIndex(element) ?? ""}`,
+          10
+        );
+        const rendered = renderedElements.find((item) => item.index === remembered);
+        if (rendered) {
+          used.add(rendered.index);
+          node.dataset.renderedIndex = `${rendered.index}`;
+          this.applyLocalRenderedStyle(rendered.element, element);
+        }
+        this.applyLocalOverlayStyle(node, element);
+        continue;
+      }
+
       const match = this.bestRenderedElementMatch(node, renderedElements, used);
       if (!match) {
         if (node.classList.contains("nested-element")) {
@@ -1548,6 +1702,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       }
 
       used.add(match.index);
+      node.dataset.renderedIndex = `${match.index}`;
+      this.rememberRenderedElementIndex(element, match.index);
       const rect = match.rect;
       const left = (rect.left - info.rect.left) / scale;
       const top = (rect.top - info.rect.top) / scale;
@@ -1562,6 +1718,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
       node.style.transform = "none";
       node.dataset.measuredHitbox = "true";
       node.classList.add("rendered-hitbox");
+      if (element && this.isElementLocallyStyled(element)) {
+        this.applyLocalRenderedStyle(match.element, element);
+      }
     }
   }
 
@@ -1862,6 +2021,20 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <label>
             ${this.escape(this.t("ui.zIndex"))}
             <input data-number-field="style.z-index" type="number" step="1" value="${this.escape(style["z-index"] || "")}">
+          </label>
+          <label>
+            ${this.escape(this.t("ui.color"))}
+            <div class="color-field">
+              <input data-color-field="style.color" type="color" value="${this.escape(this.colorPickerValue(style.color))}">
+              <input data-field="style.color" value="${this.escape(style.color || "")}" placeholder="${this.escape(this.t("ui.colorPlaceholder"))}">
+            </div>
+          </label>
+          <label>
+            ${this.escape(this.t("ui.background"))}
+            <div class="color-field">
+              <input data-color-field="style.background" type="color" value="${this.escape(this.colorPickerValue(style.background))}">
+              <input data-field="style.background" value="${this.escape(style.background || "")}" placeholder="${this.escape(this.t("ui.colorPlaceholder"))}">
+            </div>
           </label>
         </div>
 
@@ -2184,6 +2357,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-number-field]").forEach((input) => {
       input.addEventListener("change", (event) => {
         this.updateNumberField(input.dataset.numberField, event.target.value);
+      });
+    });
+    this.shadowRoot.querySelectorAll("[data-color-field]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const field = input.dataset.colorField;
+        const value = event.target.value;
+        const pairedText = this.shadowRoot.querySelector(`input[data-field="${field}"]`);
+        if (pairedText) pairedText.value = value;
+        this.updateField(field, value);
       });
     });
 
@@ -2862,6 +3044,20 @@ const styles = `
 
   label input {
     color: var(--vde-text);
+  }
+
+  .color-field {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 6px;
+    align-items: center;
+  }
+
+  .color-field input[type="color"] {
+    width: 44px;
+    min-width: 44px;
+    height: 34px;
+    padding: 2px;
   }
 
   .wide-field {
