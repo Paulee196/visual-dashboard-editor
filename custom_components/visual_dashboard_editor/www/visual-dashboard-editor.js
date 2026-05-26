@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.21";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v18";
+const UI_VERSION = "0.2.22";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v19";
 
 const TRANSLATIONS = {
   cs: {
@@ -17,6 +17,7 @@ const TRANSLATIONS = {
     "status.undo": "Vráceno: {name}",
     "status.undoEmpty": "Není co vrátit.",
     "status.yamlDirty": "YAML fragment je upravený, ještě uložit.",
+    "status.added": "Prvek přidán: {name}",
     "status.realRenderFailed": "Reálné vykreslení se nepovedlo, používám nouzový náhled: {error}",
     "error.apiNotReady": "Home Assistant API ještě není připravené.",
     "ui.working": "Pracuji...",
@@ -51,6 +52,16 @@ const TRANSLATIONS = {
     "ui.color": "Barva textu / ikony",
     "ui.background": "Barva pozadí",
     "ui.colorPlaceholder": "#ffffff, red nebo var(...)",
+    "ui.addElement": "Přidat prvek",
+    "ui.addElementTitle": "Přidat nový prvek do aktuální picture-elements karty",
+    "ui.addElementHelp": "Nový prvek se po uložení vloží na konec pole elements aktuální karty.",
+    "ui.basic": "Základní",
+    "ui.yaml": "YAML",
+    "ui.elementType": "Typ prvku",
+    "ui.name": "Popis / název",
+    "ui.createElement": "Vytvořit prvek",
+    "ui.initialYaml": "YAML nového prvku",
+    "ui.addWithYaml": "Vytvořit z YAML",
     "ui.transform": "Transform",
     "ui.image": "Image",
     "ui.nudge": "Posun",
@@ -130,6 +141,7 @@ const TRANSLATIONS = {
     "status.undo": "Restored: {name}",
     "status.undoEmpty": "Nothing to undo.",
     "status.yamlDirty": "YAML fragment edited, save still needed.",
+    "status.added": "Element added: {name}",
     "status.realRenderFailed": "Real rendering failed, using fallback preview: {error}",
     "error.apiNotReady": "Home Assistant API is not ready yet.",
     "ui.working": "Working...",
@@ -164,6 +176,16 @@ const TRANSLATIONS = {
     "ui.color": "Text / icon color",
     "ui.background": "Background color",
     "ui.colorPlaceholder": "#ffffff, red or var(...)",
+    "ui.addElement": "Add element",
+    "ui.addElementTitle": "Add a new element to the current picture-elements card",
+    "ui.addElementHelp": "The new element is saved at the end of the current card's elements list.",
+    "ui.basic": "Basic",
+    "ui.yaml": "YAML",
+    "ui.elementType": "Element type",
+    "ui.name": "Description / name",
+    "ui.createElement": "Create element",
+    "ui.initialYaml": "New element YAML",
+    "ui.addWithYaml": "Create from YAML",
     "ui.transform": "Transform",
     "ui.image": "Image",
     "ui.nudge": "Nudge",
@@ -243,6 +265,7 @@ const TRANSLATIONS = {
     "status.undo": "Wiederhergestellt: {name}",
     "status.undoEmpty": "Nichts zum Rückgängig machen.",
     "status.yamlDirty": "YAML-Fragment geändert, Speichern ist noch nötig.",
+    "status.added": "Element hinzugefügt: {name}",
     "status.realRenderFailed": "Echtes Rendering fehlgeschlagen, Fallback-Vorschau wird verwendet: {error}",
     "error.apiNotReady": "Die Home Assistant API ist noch nicht bereit.",
     "ui.working": "Arbeite...",
@@ -277,6 +300,16 @@ const TRANSLATIONS = {
     "ui.color": "Text-/Icon-Farbe",
     "ui.background": "Hintergrundfarbe",
     "ui.colorPlaceholder": "#ffffff, red oder var(...)",
+    "ui.addElement": "Element hinzufügen",
+    "ui.addElementTitle": "Neues Element zur aktuellen picture-elements-Karte hinzufügen",
+    "ui.addElementHelp": "Das neue Element wird am Ende der elements-Liste der aktuellen Karte gespeichert.",
+    "ui.basic": "Basis",
+    "ui.yaml": "YAML",
+    "ui.elementType": "Elementtyp",
+    "ui.name": "Beschreibung / Name",
+    "ui.createElement": "Element erstellen",
+    "ui.initialYaml": "YAML für neues Element",
+    "ui.addWithYaml": "Aus YAML erstellen",
     "ui.transform": "Transform",
     "ui.image": "Image",
     "ui.nudge": "Verschieben",
@@ -357,6 +390,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
       advancedText: "",
       advancedDirty: false,
       advancedExpanded: false,
+      addElementOpen: false,
+      addElementMode: "basic",
+      addElementYaml: "",
       elementFilter: "",
       elementTypeFilter: "visible",
       previewSize: "display-24",
@@ -470,6 +506,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.selectedElementPath = null;
     this.state.advancedText = "";
     this.state.advancedDirty = false;
+    this.state.addElementOpen = false;
     this.clearLocalEditTracking();
     this.render();
     try {
@@ -839,6 +876,134 @@ class VisualDashboardEditorPanel extends HTMLElement {
       );
       const nextElement = this.currentElement();
       this.state.advancedText = nextElement ? nextElement.fragment || "" : "";
+    } catch (err) {
+      this.state.error = err.message || String(err);
+    } finally {
+      this.state.loading = false;
+      this.render();
+    }
+  }
+
+  defaultNewElementYaml() {
+    return [
+      "type: state-icon",
+      "entity: light.example",
+      "style:",
+      "  left: 50%",
+      "  top: 50%",
+      "  transform: translate(-50%, -50%)",
+    ].join("\n");
+  }
+
+  buildNewElementFromForm() {
+    const root = this.shadowRoot;
+    const type = root.querySelector("#newElementType")?.value || "state-icon";
+    const entity = root.querySelector("#newElementEntity")?.value.trim();
+    const name = root.querySelector("#newElementName")?.value.trim();
+    const icon = root.querySelector("#newElementIcon")?.value.trim();
+    const image = root.querySelector("#newElementImage")?.value.trim();
+    const left = root.querySelector("#newElementLeft")?.value.trim() || "50";
+    const top = root.querySelector("#newElementTop")?.value.trim() || "50";
+    const width = root.querySelector("#newElementWidth")?.value.trim();
+    const height = root.querySelector("#newElementHeight")?.value.trim();
+    const color = root.querySelector("#newElementColorText")?.value.trim();
+    const background = root.querySelector("#newElementBackgroundText")?.value.trim();
+    const transform = root.querySelector("#newElementTransform")?.value.trim() || "translate(-50%, -50%)";
+
+    const style = {
+      left: this.percentText(left, "50%"),
+      top: this.percentText(top, "50%"),
+      transform,
+    };
+    if (width) style.width = this.percentText(width, width);
+    if (height) style.height = this.percentText(height, height);
+    if (color) style.color = color;
+    if (background) style.background = background;
+
+    if (type === "state-icon" || type === "state-label" || type === "state-badge") {
+      const element = { type, style };
+      if (entity) element.entity = entity;
+      if (icon && type === "state-icon") element.icon = icon;
+      if (name) element.title = name;
+      return element;
+    }
+
+    if (type === "image") {
+      const element = {
+        type: "image",
+        image: image || "/local/example.png",
+        style,
+      };
+      if (entity) element.entity = entity;
+      if (name) element.title = name;
+      return element;
+    }
+
+    if (type === "custom:button-card") {
+      const element = {
+        type: "custom:button-card",
+        show_name: Boolean(name),
+        show_state: false,
+        style,
+      };
+      if (entity) element.entity = entity;
+      if (name) element.name = name;
+      if (icon) element.icon = icon;
+      return element;
+    }
+
+    const element = {
+      type: "custom:hui-element",
+      card_type: type === "custom:hui-element" ? "tile" : type,
+      style,
+    };
+    if (entity) element.entity = entity;
+    if (name) element.name = name;
+    if (icon) element.icon = icon;
+    return element;
+  }
+
+  percentText(value, fallback = "") {
+    const text = String(value || "").trim();
+    if (!text) return fallback;
+    return /[a-z%()]/i.test(text) ? text : `${text}%`;
+  }
+
+  async addElement(useYaml = false) {
+    const card = this.currentCard();
+    if (!card || !this.state.selectedFile) return;
+
+    const payload = {
+      type: `${DOMAIN}/add_element`,
+      path: this.state.selectedFile,
+      card_path: card.path,
+    };
+    if (useYaml) {
+      payload.fragment = this.state.addElementYaml || this.defaultNewElementYaml();
+    } else {
+      payload.element = this.buildNewElementFromForm();
+    }
+
+    this.state.loading = true;
+    this.state.error = "";
+    this.render();
+    try {
+      const result = await this.callWS(payload);
+      this.state.cards = result.cards || [];
+      this.state.dirty = false;
+      this.state.advancedDirty = false;
+      this.state.undoStack = [];
+      this.clearLocalEditTracking();
+      this.state.addElementOpen = false;
+      this.state.addElementYaml = "";
+      if (Array.isArray(result.element_path)) {
+        this.state.selectedElementPath = [...result.element_path];
+      }
+      const nextElement = this.currentElement();
+      this.state.advancedText = nextElement ? nextElement.fragment || "" : "";
+      this.setStatus("status.added", {
+        name: nextElement ? this.displayLabel(nextElement) : this.t("ui.addElement"),
+      });
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -2124,6 +2289,108 @@ class VisualDashboardEditorPanel extends HTMLElement {
     `;
   }
 
+  renderAddElementModal() {
+    if (!this.state.addElementOpen || !this.currentCard()) return "";
+    const yaml = this.state.addElementYaml || this.defaultNewElementYaml();
+    const isYaml = this.state.addElementMode === "yaml";
+
+    return `
+      <div id="addElementBackdrop" class="modal-backdrop">
+        <section class="add-modal" role="dialog" aria-modal="true" aria-label="${this.escape(this.t("ui.addElement"))}">
+          <div class="yaml-modal-head">
+            <div>
+              <h2>${this.escape(this.t("ui.addElement"))}</h2>
+              <p>${this.escape(this.t("ui.addElementHelp"))}</p>
+            </div>
+            <button id="closeAddElement" type="button">${this.escape(this.t("ui.close"))}</button>
+          </div>
+
+          <div class="add-mode-tabs">
+            <button type="button" data-add-mode="basic" class="${!isYaml ? "selected" : ""}">${this.escape(this.t("ui.basic"))}</button>
+            <button type="button" data-add-mode="yaml" class="${isYaml ? "selected" : ""}">${this.escape(this.t("ui.yaml"))}</button>
+          </div>
+
+          ${isYaml ? `
+            <label class="wide-field">
+              ${this.escape(this.t("ui.initialYaml"))}
+              <textarea id="newElementYaml" spellcheck="false">${this.escape(yaml)}</textarea>
+            </label>
+            <div class="yaml-modal-actions">
+              <button id="createElementYaml" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.addWithYaml"))}</button>
+            </div>
+          ` : `
+            <div class="field-grid add-field-grid">
+              <label>
+                ${this.escape(this.t("ui.elementType"))}
+                <select id="newElementType">
+                  <option value="state-icon">state-icon</option>
+                  <option value="state-label">state-label</option>
+                  <option value="state-badge">state-badge</option>
+                  <option value="image">image</option>
+                  <option value="custom:button-card">custom:button-card</option>
+                  <option value="custom:hui-element">custom:hui-element / tile</option>
+                </select>
+              </label>
+              <label>
+                ${this.escape(this.t("ui.entity"))}
+                <input id="newElementEntity" placeholder="light.kitchen">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.name"))}
+                <input id="newElementName" placeholder="${this.escape(this.t("ui.addElement"))}">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.icon"))}
+                <input id="newElementIcon" placeholder="mdi:lightbulb">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.image"))}
+                <input id="newElementImage" placeholder="/local/floorplan/item.png">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.leftPercent"))}
+                <input id="newElementLeft" type="number" step="0.1" value="50">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.topPercent"))}
+                <input id="newElementTop" type="number" step="0.1" value="50">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.widthPercent"))}
+                <input id="newElementWidth" type="text" placeholder="10 / 10%">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.heightPercent"))}
+                <input id="newElementHeight" type="text" placeholder="auto">
+              </label>
+              <label>
+                ${this.escape(this.t("ui.color"))}
+                <div class="color-field">
+                  <input id="newElementColor" type="color" value="#ffffff">
+                  <input id="newElementColorText" value="" placeholder="${this.escape(this.t("ui.colorPlaceholder"))}">
+                </div>
+              </label>
+              <label>
+                ${this.escape(this.t("ui.background"))}
+                <div class="color-field">
+                  <input id="newElementBackground" type="color" value="#000000">
+                  <input id="newElementBackgroundText" value="" placeholder="${this.escape(this.t("ui.colorPlaceholder"))}">
+                </div>
+              </label>
+              <label>
+                ${this.escape(this.t("ui.transform"))}
+                <input id="newElementTransform" value="translate(-50%, -50%)">
+              </label>
+            </div>
+            <div class="yaml-modal-actions">
+              <button id="createElementBasic" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.createElement"))}</button>
+            </div>
+          `}
+        </section>
+      </div>
+    `;
+  }
+
   renderFilePicker() {
     const card = this.currentCard();
     return `
@@ -2256,7 +2523,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
           </section>
           ${this.renderInspector()}
         </main>
+        ${this.currentCard() ? `
+          <button id="openAddElement" class="add-fab" type="button" title="${this.escape(this.t("ui.addElementTitle"))}">
+            <ha-icon icon="mdi:plus"></ha-icon>
+            <span>${this.escape(this.t("ui.addElement"))}</span>
+          </button>
+        ` : ""}
         ${this.renderAdvancedModal()}
+        ${this.renderAddElementModal()}
       </div>
     `;
     this.bindEvents();
@@ -2296,6 +2570,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.selectedElementPath = null;
       this.state.advancedText = "";
       this.state.advancedDirty = false;
+      this.state.addElementOpen = false;
       this.render();
     });
 
@@ -2417,6 +2692,51 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.setStatus("status.yamlDirty");
       const inline = this.shadowRoot.querySelector("#advancedText");
       if (inline) inline.value = event.target.value;
+    });
+
+    this.shadowRoot.querySelector("#openAddElement")?.addEventListener("click", () => {
+      this.state.addElementOpen = true;
+      this.state.addElementMode = "basic";
+      this.state.addElementYaml = this.state.addElementYaml || this.defaultNewElementYaml();
+      this.render();
+    });
+    this.shadowRoot.querySelector("#closeAddElement")?.addEventListener("click", () => {
+      this.state.addElementOpen = false;
+      this.render();
+    });
+    this.shadowRoot.querySelector("#addElementBackdrop")?.addEventListener("click", (event) => {
+      if (event.target.id === "addElementBackdrop") {
+        this.state.addElementOpen = false;
+        this.render();
+      }
+    });
+    this.shadowRoot.querySelectorAll("[data-add-mode]").forEach((node) => {
+      node.addEventListener("click", () => {
+        this.state.addElementMode = node.dataset.addMode || "basic";
+        this.state.addElementYaml = this.shadowRoot.querySelector("#newElementYaml")?.value || this.state.addElementYaml || this.defaultNewElementYaml();
+        this.render();
+      });
+    });
+    this.shadowRoot.querySelector("#newElementYaml")?.addEventListener("input", (event) => {
+      this.state.addElementYaml = event.target.value;
+    });
+    this.shadowRoot.querySelector("#createElementBasic")?.addEventListener("click", () => {
+      this.addElement(false);
+    });
+    this.shadowRoot.querySelector("#createElementYaml")?.addEventListener("click", () => {
+      const textarea = this.shadowRoot.querySelector("#newElementYaml");
+      if (textarea) this.state.addElementYaml = textarea.value;
+      this.addElement(true);
+    });
+    const addColor = this.shadowRoot.querySelector("#newElementColor");
+    const addColorText = this.shadowRoot.querySelector("#newElementColorText");
+    addColor?.addEventListener("change", (event) => {
+      if (addColorText) addColorText.value = event.target.value;
+    });
+    const addBackground = this.shadowRoot.querySelector("#newElementBackground");
+    const addBackgroundText = this.shadowRoot.querySelector("#newElementBackgroundText");
+    addBackground?.addEventListener("change", (event) => {
+      if (addBackgroundText) addBackgroundText.value = event.target.value;
     });
   }
 }
@@ -3166,6 +3486,71 @@ const styles = `
     color: var(--vde-text);
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
     padding: 16px;
+  }
+
+  .add-modal {
+    width: min(760px, 92vw);
+    max-height: min(820px, 88vh);
+    overflow: auto;
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid var(--vde-line);
+    border-radius: 10px;
+    background: var(--vde-panel);
+    color: var(--vde-text);
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+  }
+
+  .add-mode-tabs {
+    display: inline-flex;
+    width: fit-content;
+    padding: 3px;
+    border: 1px solid var(--vde-line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--vde-panel) 88%, var(--vde-bg));
+  }
+
+  .add-mode-tabs button {
+    min-height: 30px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+  }
+
+  .add-mode-tabs button.selected {
+    background: var(--vde-accent);
+    color: white;
+  }
+
+  .add-field-grid {
+    align-items: end;
+  }
+
+  .add-modal textarea {
+    min-height: 340px;
+  }
+
+  .add-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 16px 0 12px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--vde-accent) 60%, transparent);
+    background: var(--vde-accent);
+    color: white;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  }
+
+  .add-fab ha-icon {
+    width: 22px;
+    height: 22px;
   }
 
   .yaml-modal-head {

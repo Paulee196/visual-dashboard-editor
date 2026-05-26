@@ -1,5 +1,7 @@
 # Visual Dashboard Editor
 
+**Jazyk / Language / Sprache:** Čeština | [English](docs/README.en.md) | [Deutsch](docs/README.de.md)
+
 Vizuální editor pro Home Assistant dashboardy. Cíl je jednoduchý: místo hledání v tisících řádků YAML kódu klikneš na prvek ve floorplanu nebo 3D plánu a upravíš jeho základní parametry přímo v UI.
 
 Aktuální verze je zaměřená na karty typu `picture-elements`, protože právě ty se často používají pro 3D floorplan dashboardy. Editor umí načítat UI/storage dashboardy vytvořené v Home Assistantu a také YAML dashboardy, které opravdu obsahují editovatelnou kartu `picture-elements`.
@@ -24,6 +26,7 @@ Po instalaci a restartu můžeš integraci rovnou přidat tady:
 - umí zobrazit reálné klikací plochy pro ladění výběru prvků
 - umí jemně posouvat vybraný prvek tlačítky nebo klávesovými šipkami
 - umí vrátit poslední lokální změnu před uložením
+- umí přidat nový `picture-elements` prvek přes tlačítko `+`, buď základním formulářem, nebo přímým YAML zápisem
 - umí filtrovat seznam prvků podle viditelnosti, hotspotů, widgetů, obrázků a podmínek
 - umí zobrazit a uložit YAML fragment vybraného prvku
 - před uložením dělá backup do `.visual_dashboard_editor_backups`

@@ -23,6 +23,7 @@ from .const import (
     STATIC_URL,
     LOVELACE_PATH_PREFIX,
     VERSION,
+    WS_ADD_ELEMENT,
     WS_LIST_FILES,
     WS_LOAD_FILE,
     WS_SAVE_ELEMENT,
@@ -116,11 +117,19 @@ def _register_websocket_commands(hass: HomeAssistant, websocket_api: Any) -> Non
         vol.Optional("element"): object,
         vol.Optional("fragment"): str,
     }
+    add_element_schema = {
+        vol.Required("type"): WS_ADD_ELEMENT,
+        vol.Required("path"): str,
+        vol.Required("card_path"): [vol.Any(str, int)],
+        vol.Optional("element"): object,
+        vol.Optional("fragment"): str,
+    }
 
     for schema, handler in (
         (list_files_schema, _ws_list_files),
         (load_file_schema, _ws_load_file),
         (save_element_schema, _ws_save_element),
+        (add_element_schema, _ws_add_element),
     ):
         decorated = websocket_api.async_response(handler)
         decorated = websocket_api.websocket_command(schema)(decorated)
@@ -195,6 +204,38 @@ async def _ws_save_element(
     except Exception as err:  # noqa: BLE001 - user-facing websocket error
         _LOGGER.exception("Failed to save dashboard element")
         connection.send_error(msg["id"], "save_failed", str(err))
+        return
+
+    connection.send_result(msg["id"], result)
+
+
+async def _ws_add_element(
+    hass: HomeAssistant,
+    connection: Any,
+    msg: dict[str, Any],
+) -> None:
+    """Append a new element to a picture-elements card."""
+    try:
+        if msg["path"].startswith(LOVELACE_PATH_PREFIX):
+            result = await _add_lovelace_element(
+                hass,
+                msg["path"],
+                msg["card_path"],
+                msg.get("element"),
+                msg.get("fragment"),
+            )
+        else:
+            result = await hass.async_add_executor_job(
+                _add_element,
+                hass.config.path(),
+                msg["path"],
+                msg["card_path"],
+                msg.get("element"),
+                msg.get("fragment"),
+            )
+    except Exception as err:  # noqa: BLE001 - user-facing websocket error
+        _LOGGER.exception("Failed to add dashboard element")
+        connection.send_error(msg["id"], "add_failed", str(err))
         return
 
     connection.send_result(msg["id"], result)
@@ -358,6 +399,31 @@ def _save_element(
     return loaded
 
 
+def _add_element(
+    config_dir: str,
+    relative_path: str,
+    card_path: list[str | int],
+    element: Any | None,
+    fragment: str | None,
+) -> dict[str, Any]:
+    """Append one element to a YAML picture-elements card and save the file."""
+    replacement = _new_element_from_payload(element, fragment)
+
+    path = _safe_yaml_path(config_dir, relative_path)
+    original = path.read_text(encoding="utf-8")
+    data = _load_yaml(original)
+    element_path = _append_element_to_card(data, card_path, replacement)
+
+    new_text = _dump_yaml(data)
+    backup_path = _write_backup(Path(config_dir).resolve(), path, original)
+    path.write_text(new_text, encoding="utf-8")
+
+    loaded = _load_dashboard_file(config_dir, relative_path)
+    loaded["backup_path"] = backup_path.relative_to(Path(config_dir).resolve()).as_posix()
+    loaded["element_path"] = element_path
+    return loaded
+
+
 async def _save_lovelace_element(
     hass: HomeAssistant,
     dashboard_path: str,
@@ -392,6 +458,70 @@ async def _save_lovelace_element(
         Path(hass.config.path()).resolve()
     ).as_posix()
     return loaded
+
+
+async def _add_lovelace_element(
+    hass: HomeAssistant,
+    dashboard_path: str,
+    card_path: list[str | int],
+    element: Any | None,
+    fragment: str | None,
+) -> dict[str, Any]:
+    """Append one element to a UI-managed Lovelace picture-elements card."""
+    replacement = _plain(_new_element_from_payload(element, fragment))
+
+    dashboard, title = _find_lovelace_dashboard(hass, dashboard_path)
+    original = copy.deepcopy(await dashboard.async_load(False))
+    updated = copy.deepcopy(original)
+    element_path = _append_element_to_card(updated, card_path, replacement)
+
+    backup_path = await hass.async_add_executor_job(
+        _write_storage_backup,
+        Path(hass.config.path()).resolve(),
+        dashboard_path,
+        title,
+        original,
+    )
+    await dashboard.async_save(updated)
+
+    loaded = await _load_lovelace_dashboard(hass, dashboard_path)
+    loaded["backup_path"] = backup_path.relative_to(
+        Path(hass.config.path()).resolve()
+    ).as_posix()
+    loaded["element_path"] = element_path
+    return loaded
+
+
+def _new_element_from_payload(element: Any | None, fragment: str | None) -> Any:
+    """Create an element mapping from structured JSON or YAML text."""
+    if element is None and fragment is None:
+        raise ValueError("No element or YAML fragment was provided")
+
+    replacement = _load_yaml(fragment) if fragment is not None else element
+    if not isinstance(replacement, dict):
+        raise ValueError("The new element must be a YAML mapping/object")
+    if not replacement.get("type"):
+        raise ValueError("The new element must define a type")
+    return replacement
+
+
+def _append_element_to_card(
+    data: Any, card_path: list[str | int], element: Any
+) -> list[str | int]:
+    """Append an element to a picture-elements card and return its new path."""
+    card = _node_at_path(data, card_path)
+    if not isinstance(card, dict) or card.get("type") != "picture-elements":
+        raise ValueError("Target path is not a picture-elements card")
+
+    elements = card.get("elements")
+    if elements is None:
+        elements = []
+        card["elements"] = elements
+    if not isinstance(elements, list):
+        raise ValueError("Target picture-elements card has no editable elements list")
+
+    elements.append(element)
+    return [*card_path, "elements", len(elements) - 1]
 
 
 def _find_lovelace_dashboard(

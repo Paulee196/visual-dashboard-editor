@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.22
+
+- Add a `+ Add element` action in the editor that can append a new element to the current `picture-elements` card.
+- Add a basic create form for common element types and a YAML mode for direct AI/user-authored element snippets.
+- Add a backend `add_element` websocket command for both YAML dashboards and UI-managed Lovelace dashboards, with backups before saving.
+- Add English and German GitHub README pages and a language selector at the top of the Czech README.
+
 ## 0.2.21
 
 - Keep locally edited element position and size active in the editor preview until the element is saved, so nudge buttons and percent fields visibly move the selected element immediately.

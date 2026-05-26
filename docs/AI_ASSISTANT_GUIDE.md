@@ -19,6 +19,8 @@ Visual Dashboard Editor is a Home Assistant custom integration for editing Lovel
 
 The editor renders the real dashboard preview and places an invisible edit layer over the rendered `picture-elements` elements. The user can click an element, nudge it, drag it, edit basic fields, or open the advanced YAML fragment.
 
+The editor can also add a new element to the current `picture-elements` card with the `+ Add element` button. The user can either use the basic form or paste a YAML snippet written by an assistant.
+
 ## First Questions To Ask The User
 
 When the user asks for help changing a dashboard element, ask for the smallest useful context:
@@ -67,6 +69,14 @@ If the user wants an AI to edit YAML directly:
 - Ask for the intended change in plain language.
 - Return the minimal YAML change only for that element unless they explicitly ask for broader refactoring.
 
+If the user wants an AI to add a new element:
+
+- Ask which dashboard and `picture-elements` card should receive the new element.
+- Ask what should be visible or clickable: icon, label, image, transparent hotspot, or custom card.
+- Ask for entity, icon, initial `left`/`top`, approximate `width`/`height`, and tap action if relevant.
+- Return a single valid YAML mapping that can be pasted into the editor's `+ Add element -> YAML` mode.
+- Include `style.left`, `style.top`, and `style.transform: translate(-50%, -50%)` unless the user specifically wants another positioning model.
+
 ## Safety Rules For AI Help
 
 - Do not ask the user for Home Assistant tokens, GitHub tokens, private SSH keys or secrets.
@@ -84,4 +94,14 @@ Current viewport preset is "...".
 I want to change ...
 Here is the advanced YAML fragment:
 ...
+```
+
+For adding a new element:
+
+```text
+I am using Visual Dashboard Editor. I want to add a new element to the current picture-elements card.
+It should control/display ...
+Use entity ...
+Initial position should be around left ...%, top ...%.
+Please return a YAML snippet for the Add element YAML mode.
 ```
