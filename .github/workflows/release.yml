@@ -2,8 +2,11 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,10 +18,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag_name="${GITHUB_REF_NAME}"
+          else
+            tag_name="$(python -c 'import json; from pathlib import Path; print(json.loads(Path("custom_components/visual_dashboard_editor/manifest.json").read_text())["version"])')"
+          fi
+          echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
         run: |
           gh release view "$TAG_NAME" >/dev/null 2>&1 && exit 0
           gh release create "$TAG_NAME" \
