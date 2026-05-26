@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.2";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v23";
+const UI_VERSION = "0.3.3";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v24";
 
 const TRANSLATIONS = {
   cs: {
@@ -58,6 +58,8 @@ const TRANSLATIONS = {
     "ui.color": "Barva textu / ikony",
     "ui.background": "Barva pozadí",
     "ui.colorPlaceholder": "#ffffff, red nebo var(...)",
+    "ui.transparentBackground": "Průhledné pozadí",
+    "ui.fixedButtonCard": "Nový prvek bude custom:button-card",
     "ui.addElement": "Přidat prvek",
     "ui.addElementTitle": "Přidat nový prvek do aktuální picture-elements karty",
     "ui.addElementHelp": "Nový prvek se po uložení vloží na konec pole elements aktuální karty.",
@@ -199,6 +201,8 @@ const TRANSLATIONS = {
     "ui.color": "Text / icon color",
     "ui.background": "Background color",
     "ui.colorPlaceholder": "#ffffff, red or var(...)",
+    "ui.transparentBackground": "Transparent background",
+    "ui.fixedButtonCard": "New element will be custom:button-card",
     "ui.addElement": "Add element",
     "ui.addElementTitle": "Add a new element to the current picture-elements card",
     "ui.addElementHelp": "The new element is saved at the end of the current card's elements list.",
@@ -340,6 +344,8 @@ const TRANSLATIONS = {
     "ui.color": "Text-/Icon-Farbe",
     "ui.background": "Hintergrundfarbe",
     "ui.colorPlaceholder": "#ffffff, red oder var(...)",
+    "ui.transparentBackground": "Transparenter Hintergrund",
+    "ui.fixedButtonCard": "Neues Element wird custom:button-card",
     "ui.addElement": "Element hinzufügen",
     "ui.addElementTitle": "Neues Element zur aktuellen picture-elements-Karte hinzufügen",
     "ui.addElementHelp": "Das neue Element wird am Ende der elements-Liste der aktuellen Karte gespeichert.",
@@ -1106,18 +1112,25 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   defaultNewElementYaml() {
     return [
-      "type: state-icon",
+      "type: custom:button-card",
       "entity: light.example",
+      "name: Nový prvek",
+      "show_state: false",
       "style:",
       "  left: 50%",
       "  top: 50%",
+      "  width: 10%",
       "  transform: translate(-50%, -50%)",
+      "styles:",
+      "  card:",
+      "    - background: transparent",
+      "    - box-shadow: none",
+      "    - border: none",
     ].join("\n");
   }
 
   buildNewElementFromForm() {
     const root = this.shadowRoot;
-    const type = root.querySelector("#newElementType")?.value || "state-icon";
     const entity = root.querySelector("#newElementEntity")?.value.trim();
     const name = root.querySelector("#newElementName")?.value.trim();
     const icon = root.querySelector("#newElementIcon")?.value.trim();
@@ -1128,6 +1141,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const height = root.querySelector("#newElementHeight")?.value.trim();
     const color = root.querySelector("#newElementColorText")?.value.trim();
     const background = root.querySelector("#newElementBackgroundText")?.value.trim();
+    const transparentBackground = Boolean(root.querySelector("#newElementTransparentBackground")?.checked);
     const transform = root.querySelector("#newElementTransform")?.value.trim() || "translate(-50%, -50%)";
 
     const style = {
@@ -1138,48 +1152,42 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (width) style.width = this.percentText(width, width);
     if (height) style.height = this.percentText(height, height);
     if (color) style.color = color;
-    if (background) style.background = background;
-
-    if (type === "state-icon" || type === "state-label" || type === "state-badge") {
-      const element = { type, style };
-      if (entity) element.entity = entity;
-      if (icon && type === "state-icon") element.icon = icon;
-      if (name) element.title = name;
-      return element;
-    }
-
-    if (type === "image") {
-      const element = {
-        type: "image",
-        image: image || "/local/example.png",
-        style,
-      };
-      if (entity) element.entity = entity;
-      if (name) element.title = name;
-      return element;
-    }
-
-    if (type === "custom:button-card") {
-      const element = {
-        type: "custom:button-card",
-        show_name: Boolean(name),
-        show_state: false,
-        style,
-      };
-      if (entity) element.entity = entity;
-      if (name) element.name = name;
-      if (icon) element.icon = icon;
-      return element;
+    if (transparentBackground) {
+      style.background = "transparent";
+    } else if (background) {
+      style.background = background;
     }
 
     const element = {
-      type: "custom:hui-element",
-      card_type: type === "custom:hui-element" ? "tile" : type,
+      type: "custom:button-card",
+      show_name: Boolean(name),
+      show_state: false,
       style,
     };
     if (entity) element.entity = entity;
     if (name) element.name = name;
     if (icon) element.icon = icon;
+    if (image) {
+      element.entity_picture = image;
+      element.show_entity_picture = true;
+    }
+
+    const cardStyles = [];
+    if (transparentBackground) {
+      cardStyles.push("background: transparent", "box-shadow: none", "border: none");
+    } else if (background) {
+      cardStyles.push(`background: ${background}`);
+    }
+    if (cardStyles.length) {
+      element.styles = { ...(element.styles || {}), card: cardStyles };
+    }
+    if (color) {
+      element.styles = {
+        ...(element.styles || {}),
+        icon: [`color: ${color}`],
+        name: [`color: ${color}`],
+      };
+    }
     return element;
   }
 
@@ -2532,10 +2540,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
   renderResizeGroup(step, label) {
     const buttons = [
       ["width", -1, "mdi:arrow-collapse-horizontal", `${this.t("ui.shrink")} ${this.t("ui.sizeWidth")}`],
-      ["width", 1, "mdi:arrow-expand-horizontal", `${this.t("ui.grow")} ${this.t("ui.sizeWidth")}`],
-      ["both", -1, "mdi:minus", `${this.t("ui.shrink")} ${this.t("ui.sizeAll")}`],
-      ["both", 1, "mdi:plus", `${this.t("ui.grow")} ${this.t("ui.sizeAll")}`],
       ["height", -1, "mdi:arrow-collapse-vertical", `${this.t("ui.shrink")} ${this.t("ui.sizeHeight")}`],
+      ["width", 1, "mdi:arrow-expand-horizontal", `${this.t("ui.grow")} ${this.t("ui.sizeWidth")}`],
       ["height", 1, "mdi:arrow-expand-vertical", `${this.t("ui.grow")} ${this.t("ui.sizeHeight")}`],
     ];
     return `
@@ -2593,18 +2599,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
               <button id="createElementYaml" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.addWithYaml"))}</button>
             </div>
           ` : `
+            <p class="form-note">${this.escape(this.t("ui.fixedButtonCard"))}</p>
             <div class="field-grid add-field-grid">
-              <label>
-                ${this.escape(this.t("ui.elementType"))}
-                <select id="newElementType">
-                  <option value="state-icon">state-icon</option>
-                  <option value="state-label">state-label</option>
-                  <option value="state-badge">state-badge</option>
-                  <option value="image">image</option>
-                  <option value="custom:button-card">custom:button-card</option>
-                  <option value="custom:hui-element">custom:hui-element / tile</option>
-                </select>
-              </label>
               <label>
                 ${this.escape(this.t("ui.entity"))}
                 <input id="newElementEntity" placeholder="light.kitchen">
@@ -2650,6 +2646,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
                   <input id="newElementBackground" type="color" value="#000000">
                   <input id="newElementBackgroundText" value="" placeholder="${this.escape(this.t("ui.colorPlaceholder"))}">
                 </div>
+                <span class="inline-check">
+                  <input id="newElementTransparentBackground" type="checkbox">
+                  ${this.escape(this.t("ui.transparentBackground"))}
+                </span>
               </label>
               <label>
                 ${this.escape(this.t("ui.transform"))}
@@ -3026,6 +3026,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const addBackgroundText = this.shadowRoot.querySelector("#newElementBackgroundText");
     addBackground?.addEventListener("change", (event) => {
       if (addBackgroundText) addBackgroundText.value = event.target.value;
+    });
+    const addTransparentBackground = this.shadowRoot.querySelector("#newElementTransparentBackground");
+    addTransparentBackground?.addEventListener("change", (event) => {
+      if (!addBackgroundText) return;
+      if (event.target.checked) {
+        addBackgroundText.value = "transparent";
+      } else if (addBackgroundText.value.trim().toLowerCase() === "transparent") {
+        addBackgroundText.value = "";
+      }
     });
   }
 }
@@ -3721,11 +3730,6 @@ const styles = `
     gap: 5px;
   }
 
-  .size-group .nudge-buttons {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
   .icon-button {
     width: 34px;
     min-height: 34px;
@@ -3834,6 +3838,30 @@ const styles = `
 
   .add-field-grid {
     align-items: end;
+  }
+
+  .form-note {
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--vde-line);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--vde-accent) 10%, transparent);
+    color: var(--vde-muted);
+    font-size: 12px;
+  }
+
+  .inline-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 28px;
+    color: var(--vde-muted);
+  }
+
+  .inline-check input {
+    width: auto;
+    min-height: auto;
+    padding: 0;
   }
 
   .add-modal textarea {

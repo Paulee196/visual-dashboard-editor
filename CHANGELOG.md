@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- Make the basic add-element flow always create a `custom:button-card`.
+- Add a transparent background option next to the new element background color control.
+- Make resize controls use the same four-button footprint as the nudge controls.
+
 ## 0.3.2
 
 - Restore the release workflow to the original tag-only publishing flow used by previous working releases.

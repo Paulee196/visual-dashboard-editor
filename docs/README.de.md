@@ -14,7 +14,7 @@ Visual Dashboard Editor ist eine Home-Assistant-Custom-Integration zum visuellen
 - Ändert die Größe des ausgewählten Elements per Buttons und kann die gerenderte Größe in responsive Prozentwerte umwandeln.
 - Zeigt Klickflächen zur Fehlersuche bei ungenauer Auswahl.
 - Unterstützt Undo für die letzte lokale Änderung vor dem Speichern.
-- Fügt neue `picture-elements`-Elemente über den `+`-Button hinzu, entweder per Grundformular oder direkt per YAML.
+- Fügt neue `picture-elements`-Elemente über den `+`-Button hinzu; das Grundformular erstellt eine `custom:button-card`, YAML bleibt für manuelle Snippets verfügbar.
 - Löscht das ausgewählte Element und kann es mit `Rückgängig` wiederherstellen.
 - Speichert das ausgewählte Element zurück ins Dashboard und erstellt vorher ein Backup.
 

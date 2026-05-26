@@ -19,7 +19,7 @@ Visual Dashboard Editor is a Home Assistant custom integration for editing Lovel
 
 The editor renders the real dashboard preview and places an invisible edit layer over the rendered `picture-elements` elements. The user can click an element, nudge it, drag it, edit basic fields, or open the advanced YAML fragment.
 
-The editor can also add a new element to the current `picture-elements` card with the `+ Add element` button. The user can either use the basic form or paste a YAML snippet written by an assistant.
+The editor can also add a new element to the current `picture-elements` card with the `+ Add element` button. The basic form always creates a `custom:button-card`, because it works best for positioned floorplan controls. The user can still paste a YAML snippet written by an assistant in YAML mode.
 
 For sizing, the inspector has resize buttons for width, height and whole-element adjustments. The `Current size as %` action converts the currently rendered element dimensions into percentages relative to the `picture-elements` plan, which is usually the safest responsive sizing model for floorplans.
 
@@ -79,7 +79,7 @@ If the user wants an AI to edit YAML directly:
 If the user wants an AI to add a new element:
 
 - Ask which dashboard and `picture-elements` card should receive the new element.
-- Ask what should be visible or clickable: icon, label, image, transparent hotspot, or custom card.
+- Ask what should be visible or clickable on the new `custom:button-card`: icon, label, image, transparent hotspot, or custom styling.
 - Ask for entity, icon, initial `left`/`top`, approximate `width`/`height`, and tap action if relevant.
 - Return a single valid YAML mapping that can be pasted into the editor's `+ Add element -> YAML` mode.
 - Include `style.left`, `style.top`, and `style.transform: translate(-50%, -50%)` unless the user specifically wants another positioning model.
