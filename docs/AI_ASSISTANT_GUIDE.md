@@ -21,6 +21,8 @@ The editor renders the real dashboard preview and places an invisible edit layer
 
 The editor can also add a new element to the current `picture-elements` card with the `+ Add element` button. The user can either use the basic form or paste a YAML snippet written by an assistant.
 
+For sizing, the inspector has resize buttons for width, height and whole-element adjustments. The `Current size as %` action converts the currently rendered element dimensions into percentages relative to the `picture-elements` plan, which is usually the safest responsive sizing model for floorplans.
+
 ## First Questions To Ask The User
 
 When the user asks for help changing a dashboard element, ask for the smallest useful context:
@@ -30,6 +32,7 @@ When the user asks for help changing a dashboard element, ask for the smallest u
 3. What should change: position, size, icon, entity, image, opacity, z-index, or YAML fragment?
 4. What viewport preset is active if the issue is responsive layout?
 5. If clicking is inaccurate, ask them to enable `Show click areas` and describe or screenshot the highlighted area.
+6. If sizing should work across monitor and phone, ask whether they have tried `Current size as %`.
 
 ## Best User Workflow
 

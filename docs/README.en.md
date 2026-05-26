@@ -11,6 +11,7 @@ Visual Dashboard Editor is a Home Assistant custom integration for editing Lovel
 - Renders the real Lovelace dashboard preview with an editor layer above it.
 - Lets you click an element, edit its position, size, entity, icon, image, opacity, z-index, color, background and transform.
 - Lets you move the selected element with drag, nudge buttons or keyboard arrows.
+- Lets you resize the selected element with buttons and convert the rendered size to responsive percentages.
 - Shows click areas for troubleshooting selection.
 - Supports undo for the last local edit before saving.
 - Adds new `picture-elements` elements with the `+` button, either through a basic form or direct YAML.

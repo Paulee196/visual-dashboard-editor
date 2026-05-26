@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.22";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v19";
+const UI_VERSION = "0.2.23";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v20";
 
 const TRANSLATIONS = {
   cs: {
@@ -14,6 +14,8 @@ const TRANSLATIONS = {
     "status.savedWithBackup": "Uloženo. Backup: {path}",
     "status.saved": "Uloženo.",
     "status.moved": "Prvek posunut, ještě uložit.",
+    "status.resized": "Velikost upravena, ještě uložit.",
+    "status.responsiveSized": "Aktuální velikost je uložená jako responzivní procenta.",
     "status.undo": "Vráceno: {name}",
     "status.undoEmpty": "Není co vrátit.",
     "status.yamlDirty": "YAML fragment je upravený, ještě uložit.",
@@ -72,6 +74,17 @@ const TRANSLATIONS = {
     "ui.nudgeUp": "Posunout nahoru",
     "ui.nudgeDown": "Posunout dolů",
     "ui.keyboardNudgeHelp": "Šipky posouvají o 0,1 %, Shift + šipky o 1 %.",
+    "ui.sizeTools": "Velikost",
+    "ui.sizeHelp": "Mění width/height v procentech. Pro floorplan se procenta škálují s plánkem na mobilu i monitoru.",
+    "ui.sizeFine": "Jemně 0,1 %",
+    "ui.sizeCoarse": "Rychle 1 %",
+    "ui.sizeAll": "Celek",
+    "ui.sizeWidth": "Šířka",
+    "ui.sizeHeight": "Výška",
+    "ui.shrink": "Zmenšit",
+    "ui.grow": "Zvětšit",
+    "ui.responsivePercent": "Aktuální velikost jako %",
+    "ui.responsivePercentTitle": "Převede aktuálně vykreslenou šířku a případnou explicitní výšku na procenta vůči plánku, aby se prvek škáloval s dashboardem.",
     "ui.advancedYaml": "Pokročilý YAML fragment",
     "ui.expandEditor": "Zvětšit editor",
     "ui.saveYamlFragment": "Uložit YAML fragment",
@@ -138,6 +151,8 @@ const TRANSLATIONS = {
     "status.savedWithBackup": "Saved. Backup: {path}",
     "status.saved": "Saved.",
     "status.moved": "Element moved, save still needed.",
+    "status.resized": "Size changed, save still needed.",
+    "status.responsiveSized": "Current size is stored as responsive percentages.",
     "status.undo": "Restored: {name}",
     "status.undoEmpty": "Nothing to undo.",
     "status.yamlDirty": "YAML fragment edited, save still needed.",
@@ -196,6 +211,17 @@ const TRANSLATIONS = {
     "ui.nudgeUp": "Move up",
     "ui.nudgeDown": "Move down",
     "ui.keyboardNudgeHelp": "Arrow keys move by 0.1%, Shift + arrows by 1%.",
+    "ui.sizeTools": "Size",
+    "ui.sizeHelp": "Changes width/height in percentages. In floorplans, percentages scale with the plan on phones and monitors.",
+    "ui.sizeFine": "Fine 0.1%",
+    "ui.sizeCoarse": "Fast 1%",
+    "ui.sizeAll": "Whole",
+    "ui.sizeWidth": "Width",
+    "ui.sizeHeight": "Height",
+    "ui.shrink": "Shrink",
+    "ui.grow": "Grow",
+    "ui.responsivePercent": "Current size as %",
+    "ui.responsivePercentTitle": "Converts the currently rendered width and any explicit height to percentages relative to the plan so the element scales with the dashboard.",
     "ui.advancedYaml": "Advanced YAML fragment",
     "ui.expandEditor": "Expand editor",
     "ui.saveYamlFragment": "Save YAML fragment",
@@ -262,6 +288,8 @@ const TRANSLATIONS = {
     "status.savedWithBackup": "Gespeichert. Backup: {path}",
     "status.saved": "Gespeichert.",
     "status.moved": "Element verschoben, Speichern ist noch nötig.",
+    "status.resized": "Größe geändert, Speichern ist noch nötig.",
+    "status.responsiveSized": "Aktuelle Größe ist als responsive Prozentwerte gespeichert.",
     "status.undo": "Wiederhergestellt: {name}",
     "status.undoEmpty": "Nichts zum Rückgängig machen.",
     "status.yamlDirty": "YAML-Fragment geändert, Speichern ist noch nötig.",
@@ -320,6 +348,17 @@ const TRANSLATIONS = {
     "ui.nudgeUp": "Nach oben verschieben",
     "ui.nudgeDown": "Nach unten verschieben",
     "ui.keyboardNudgeHelp": "Pfeiltasten verschieben um 0,1 %, Shift + Pfeiltasten um 1 %.",
+    "ui.sizeTools": "Größe",
+    "ui.sizeHelp": "Ändert width/height in Prozent. Bei Floorplans skalieren Prozentwerte mit dem Plan auf Telefon und Monitor.",
+    "ui.sizeFine": "Fein 0,1 %",
+    "ui.sizeCoarse": "Schnell 1 %",
+    "ui.sizeAll": "Ganzes Element",
+    "ui.sizeWidth": "Breite",
+    "ui.sizeHeight": "Höhe",
+    "ui.shrink": "Verkleinern",
+    "ui.grow": "Vergrößern",
+    "ui.responsivePercent": "Aktuelle Größe als %",
+    "ui.responsivePercentTitle": "Wandelt die aktuell gerenderte Breite und eine explizite Höhe in Prozent relativ zum Plan um, damit das Element mit dem Dashboard skaliert.",
     "ui.advancedYaml": "Erweitertes YAML-Fragment",
     "ui.expandEditor": "Editor vergrößern",
     "ui.saveYamlFragment": "YAML-Fragment speichern",
@@ -727,6 +766,88 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.markElementLocallyStyled(element);
     this.setStatus("status.moved");
     this.updateSelectedElementDom(element);
+  }
+
+  resizeSelected(target, direction, step = 0.1) {
+    const element = this.currentElement();
+    if (!element) return;
+    this.pushUndo(element);
+    this.applyResize(element, target, direction * step);
+  }
+
+  applyResize(element, target, delta) {
+    const style = element.config.style || {};
+    const measured = this.measuredSelectedSizePercent(element);
+    const keys =
+      target === "width"
+        ? ["width"]
+        : target === "height"
+          ? ["height"]
+          : ["width", "height"];
+
+    element.config.style = element.config.style || {};
+    for (const key of keys) {
+      const current = this.sizePercentValue(style[key], measured[key]);
+      if (key === "height" && target === "both" && !style.height && style.height !== 0) {
+        continue;
+      }
+      element.config.style[key] = `${this.clamp(current + delta, 0.1, 300).toFixed(1)}%`;
+    }
+
+    this.state.dirty = true;
+    this.markElementLocallyEdited(element);
+    this.markElementLocallyStyled(element);
+    this.setStatus("status.resized");
+    this.updateSelectedElementDom(element);
+  }
+
+  sizePercentValue(value, measuredValue) {
+    const parsed = Number.parseFloat(this.percentToNumber(value));
+    if (Number.isFinite(parsed)) return parsed;
+    if (Number.isFinite(measuredValue) && measuredValue > 0) return measuredValue;
+    return 10;
+  }
+
+  applyResponsiveSelectedSize() {
+    const element = this.currentElement();
+    if (!element) return;
+    const measured = this.measuredSelectedSizePercent(element);
+    if (!Number.isFinite(measured.width) && !Number.isFinite(measured.height)) return;
+
+    this.pushUndo(element);
+    element.config.style = element.config.style || {};
+    if (Number.isFinite(measured.width)) {
+      element.config.style.width = `${this.clamp(measured.width, 0.1, 300).toFixed(2)}%`;
+    }
+    const currentHeight = String(element.config.style.height || "").trim().toLowerCase();
+    if (Number.isFinite(measured.height) && currentHeight && currentHeight !== "auto") {
+      element.config.style.height = `${this.clamp(measured.height, 0.1, 300).toFixed(2)}%`;
+    }
+    this.state.dirty = true;
+    this.markElementLocallyEdited(element);
+    this.markElementLocallyStyled(element);
+    this.setStatus("status.responsiveSized");
+    this.updateSelectedElementDom(element);
+  }
+
+  measuredSelectedSizePercent(element) {
+    const cardIndex = this.state.cardIndex;
+    const card = this.currentCard();
+    const elementIndex = card?.elements?.findIndex((candidate) =>
+      this.samePath(candidate.path, element.path)
+    );
+    const node = this.shadowRoot.querySelector(
+      `.plan-element[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"]`
+    );
+    const overlay = this.shadowRoot.querySelector(".edit-overlay");
+    if (!node || !overlay) return {};
+
+    const nodeRect = node.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
+    return {
+      width: overlayRect.width > 0 ? (nodeRect.width / overlayRect.width) * 100 : undefined,
+      height: overlayRect.height > 0 ? (nodeRect.height / overlayRect.height) * 100 : undefined,
+    };
   }
 
   updateSelectedElementDom(element) {
@@ -2212,6 +2333,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
           ${this.renderNudgeGroup("1", this.t("ui.nudgeCoarse"))}
         </section>
 
+        <section class="nudge-panel">
+          <div class="nudge-head">
+            <h3>${this.escape(this.t("ui.sizeTools"))}</h3>
+            <p>${this.escape(this.t("ui.sizeHelp"))}</p>
+          </div>
+          ${this.renderResizeGroup("0.1", this.t("ui.sizeFine"))}
+          ${this.renderResizeGroup("1", this.t("ui.sizeCoarse"))}
+          <button id="responsiveSize" class="wide-button" type="button" title="${this.escape(this.t("ui.responsivePercentTitle"))}">
+            ${this.escape(this.t("ui.responsivePercent"))}
+          </button>
+        </section>
+
         <label class="wide-field">
           ${this.escape(this.t("ui.transform"))}
           <input data-field="style.transform" value="${this.escape(style.transform || "")}" placeholder="translate(-50%, -50%) scale(1.1)">
@@ -2285,6 +2418,40 @@ class VisualDashboardEditorPanel extends HTMLElement {
             <button id="saveAdvancedModal" class="primary" type="button" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.saveYamlFragment"))}</button>
           </div>
         </section>
+      </div>
+    `;
+  }
+
+  renderResizeGroup(step, label) {
+    const buttons = [
+      ["width", -1, "mdi:arrow-collapse-horizontal", `${this.t("ui.shrink")} ${this.t("ui.sizeWidth")}`],
+      ["width", 1, "mdi:arrow-expand-horizontal", `${this.t("ui.grow")} ${this.t("ui.sizeWidth")}`],
+      ["both", -1, "mdi:minus", `${this.t("ui.shrink")} ${this.t("ui.sizeAll")}`],
+      ["both", 1, "mdi:plus", `${this.t("ui.grow")} ${this.t("ui.sizeAll")}`],
+      ["height", -1, "mdi:arrow-collapse-vertical", `${this.t("ui.shrink")} ${this.t("ui.sizeHeight")}`],
+      ["height", 1, "mdi:arrow-expand-vertical", `${this.t("ui.grow")} ${this.t("ui.sizeHeight")}`],
+    ];
+    return `
+      <div class="nudge-group size-group">
+        <span>${this.escape(label)}</span>
+        <div class="nudge-buttons">
+          ${buttons
+            .map(
+              ([target, direction, icon, title]) => `
+                <button
+                  class="icon-button"
+                  type="button"
+                  title="${this.escape(title)}"
+                  data-resize-step="${this.escape(step)}"
+                  data-resize-target="${this.escape(target)}"
+                  data-resize-direction="${direction}"
+                >
+                  <ha-icon icon="${icon}"></ha-icon>
+                </button>
+              `
+            )
+            .join("")}
+        </div>
       </div>
     `;
   }
@@ -2662,6 +2829,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
         this.nudgeSelected(dx, dy, Number.isFinite(step) ? step : 0.1);
       });
     });
+
+    this.shadowRoot.querySelectorAll("[data-resize-step]").forEach((node) => {
+      node.addEventListener("click", () => {
+        const target = node.dataset.resizeTarget || "both";
+        const direction = Number.parseFloat(node.dataset.resizeDirection || "0");
+        const step = Number.parseFloat(node.dataset.resizeStep || "0.1");
+        this.resizeSelected(target, Number.isFinite(direction) ? direction : 0, Number.isFinite(step) ? step : 0.1);
+      });
+    });
+    this.shadowRoot
+      .querySelector("#responsiveSize")
+      ?.addEventListener("click", () => this.applyResponsiveSelectedSize());
 
     this.shadowRoot.querySelector("#openAdvancedModal")?.addEventListener("click", () => {
       this.state.advancedExpanded = true;
@@ -3422,6 +3601,11 @@ const styles = `
     gap: 5px;
   }
 
+  .size-group .nudge-buttons {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   .icon-button {
     width: 34px;
     min-height: 34px;
@@ -3433,6 +3617,11 @@ const styles = `
   .icon-button ha-icon {
     width: 18px;
     height: 18px;
+  }
+
+  .wide-button {
+    width: 100%;
+    margin-top: 10px;
   }
 
   .advanced {

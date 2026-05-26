@@ -25,6 +25,7 @@ Po instalaci a restartu můžeš integraci rovnou přidat tady:
 - umí prvek posouvat myší přímo v náhledu
 - umí zobrazit reálné klikací plochy pro ladění výběru prvků
 - umí jemně posouvat vybraný prvek tlačítky nebo klávesovými šipkami
+- umí zvětšit/zmenšit vybraný prvek tlačítky a převést aktuální vykreslenou velikost na responzivní procenta
 - umí vrátit poslední lokální změnu před uložením
 - umí přidat nový `picture-elements` prvek přes tlačítko `+`, buď základním formulářem, nebo přímým YAML zápisem
 - umí filtrovat seznam prvků podle viditelnosti, hotspotů, widgetů, obrázků a podmínek

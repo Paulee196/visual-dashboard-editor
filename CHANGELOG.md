@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.23
+
+- Add inspector size controls for shrinking/growing the selected element by 0.1% or 1%.
+- Support separate width, height and whole-element resize actions.
+- Add a `Current size as %` action that converts the rendered element size into percentages relative to the picture-elements plan, making the element scale more naturally across monitor and phone previews.
+
 ## 0.2.22
 
 - Add a `+ Add element` action in the editor that can append a new element to the current `picture-elements` card.
