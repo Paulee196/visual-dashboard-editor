@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.0";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v21";
+const UI_VERSION = "0.3.1";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v22";
 
 const TRANSLATIONS = {
   cs: {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Make the release workflow run from `main` pushes as well as tag pushes, so HACS releases can be created even if a tag event does not publish a GitHub Release.
+- Keep the delete/restore functionality from `0.3.0`.
+
 ## 0.3.0
 
 - Add a `Delete` action in the inspector for removing the selected `picture-elements` element.
