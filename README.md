@@ -28,6 +28,7 @@ Po instalaci a restartu můžeš integraci rovnou přidat tady:
 - umí zvětšit/zmenšit vybraný prvek tlačítky a převést aktuální vykreslenou velikost na responzivní procenta
 - umí vrátit poslední lokální změnu před uložením
 - umí přidat nový `picture-elements` prvek přes tlačítko `+`, buď základním formulářem, nebo přímým YAML zápisem
+- umí smazat vybraný prvek a vrátit ho zpět přes `Zpět`
 - umí filtrovat seznam prvků podle viditelnosti, hotspotů, widgetů, obrázků a podmínek
 - umí zobrazit a uložit YAML fragment vybraného prvku
 - před uložením dělá backup do `.visual_dashboard_editor_backups`

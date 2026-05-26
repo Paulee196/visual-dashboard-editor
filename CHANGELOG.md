@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Add a `Delete` action in the inspector for removing the selected `picture-elements` element.
+- Create a backup before deleting YAML and UI-managed Lovelace elements.
+- Extend `Undo` so a deleted element can be restored to its previous position in the element list.
+
 ## 0.2.23
 
 - Add inspector size controls for shrinking/growing the selected element by 0.1% or 1%.

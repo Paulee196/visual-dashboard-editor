@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.2.23";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v20";
+const UI_VERSION = "0.3.0";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v21";
 
 const TRANSLATIONS = {
   cs: {
@@ -18,6 +18,7 @@ const TRANSLATIONS = {
     "status.responsiveSized": "Aktuální velikost je uložená jako responzivní procenta.",
     "status.undo": "Vráceno: {name}",
     "status.undoEmpty": "Není co vrátit.",
+    "status.deleted": "Prvek smazán: {name}. Můžeš ho vrátit tlačítkem Zpět.",
     "status.yamlDirty": "YAML fragment je upravený, ještě uložit.",
     "status.added": "Prvek přidán: {name}",
     "status.realRenderFailed": "Reálné vykreslení se nepovedlo, používám nouzový náhled: {error}",
@@ -43,6 +44,9 @@ const TRANSLATIONS = {
     "ui.save": "Uložit",
     "ui.undo": "Zpět",
     "ui.undoTitle": "Vrátit poslední změnu",
+    "ui.delete": "Smazat",
+    "ui.deleteTitle": "Smazat vybraný prvek",
+    "ui.deleteConfirm": "Opravdu smazat prvek \"{name}\"? Půjde vrátit tlačítkem Zpět.",
     "ui.entity": "Entity",
     "ui.icon": "Ikona",
     "ui.leftPercent": "Vlevo %",
@@ -155,6 +159,7 @@ const TRANSLATIONS = {
     "status.responsiveSized": "Current size is stored as responsive percentages.",
     "status.undo": "Restored: {name}",
     "status.undoEmpty": "Nothing to undo.",
+    "status.deleted": "Element deleted: {name}. You can restore it with Undo.",
     "status.yamlDirty": "YAML fragment edited, save still needed.",
     "status.added": "Element added: {name}",
     "status.realRenderFailed": "Real rendering failed, using fallback preview: {error}",
@@ -180,6 +185,9 @@ const TRANSLATIONS = {
     "ui.save": "Save",
     "ui.undo": "Undo",
     "ui.undoTitle": "Undo the last change",
+    "ui.delete": "Delete",
+    "ui.deleteTitle": "Delete the selected element",
+    "ui.deleteConfirm": "Delete element \"{name}\"? You can restore it with Undo.",
     "ui.entity": "Entity",
     "ui.icon": "Icon",
     "ui.leftPercent": "Left %",
@@ -292,6 +300,7 @@ const TRANSLATIONS = {
     "status.responsiveSized": "Aktuelle Größe ist als responsive Prozentwerte gespeichert.",
     "status.undo": "Wiederhergestellt: {name}",
     "status.undoEmpty": "Nichts zum Rückgängig machen.",
+    "status.deleted": "Element gelöscht: {name}. Du kannst es mit Rückgängig wiederherstellen.",
     "status.yamlDirty": "YAML-Fragment geändert, Speichern ist noch nötig.",
     "status.added": "Element hinzugefügt: {name}",
     "status.realRenderFailed": "Echtes Rendering fehlgeschlagen, Fallback-Vorschau wird verwendet: {error}",
@@ -317,6 +326,9 @@ const TRANSLATIONS = {
     "ui.save": "Speichern",
     "ui.undo": "Rückgängig",
     "ui.undoTitle": "Letzte Änderung rückgängig machen",
+    "ui.delete": "Löschen",
+    "ui.deleteTitle": "Ausgewähltes Element löschen",
+    "ui.deleteConfirm": "Element \"{name}\" löschen? Du kannst es mit Rückgängig wiederherstellen.",
     "ui.entity": "Entität",
     "ui.icon": "Icon",
     "ui.leftPercent": "Links %",
@@ -695,14 +707,19 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.updateField(path, Number.isFinite(numeric) ? String(numeric) : "");
   }
 
-  pushUndo(element = this.currentElement()) {
-    if (!element) return;
-    const snapshot = {
+  undoSnapshot(element = this.currentElement(), action = "update") {
+    if (!element) return null;
+    return {
+      action,
       path: [...element.path],
       config: this.cloneConfig(element.config),
       advancedText: element.fragment || "",
       label: this.displayLabel(element),
     };
+  }
+
+  pushUndoSnapshot(snapshot) {
+    if (!snapshot) return;
     const signature = JSON.stringify(snapshot);
     const last = this.state.undoStack[this.state.undoStack.length - 1];
     if (last?.signature === signature) return;
@@ -712,11 +729,20 @@ class VisualDashboardEditorPanel extends HTMLElement {
     ].slice(-30);
   }
 
-  undoLastChange() {
+  pushUndo(element = this.currentElement(), action = "update") {
+    this.pushUndoSnapshot(this.undoSnapshot(element, action));
+  }
+
+  async undoLastChange() {
     const snapshot = this.state.undoStack.pop();
     if (!snapshot) {
       this.setStatus("status.undoEmpty");
       this.render();
+      return;
+    }
+
+    if (snapshot.action === "delete") {
+      await this.restoreDeletedElement(snapshot);
       return;
     }
 
@@ -740,6 +766,79 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.markElementLocallyStyled(element);
     this.setStatus("status.undo", { name: snapshot.label || this.displayLabel(element) });
     this.render();
+  }
+
+  async deleteSelectedElement() {
+    const element = this.currentElement();
+    if (!element || !this.state.selectedFile) return;
+
+    const label = this.displayLabel(element);
+    if (!window.confirm(this.t("ui.deleteConfirm", { name: label }))) return;
+
+    const snapshot = this.undoSnapshot(element, "delete");
+    this.state.loading = true;
+    this.state.error = "";
+    this.render();
+
+    try {
+      const result = await this.callWS({
+        type: `${DOMAIN}/delete_element`,
+        path: this.state.selectedFile,
+        element_path: element.path,
+      });
+      this.state.cards = result.cards || [];
+      this.state.selectedElementPath = null;
+      this.state.advancedText = "";
+      this.state.advancedDirty = false;
+      this.state.dirty = false;
+      this.clearLocalEditTracking();
+      this.pushUndoSnapshot(snapshot);
+      this.setStatus("status.deleted", { name: label });
+    } catch (err) {
+      this.state.error = err.message || String(err);
+    } finally {
+      this.state.loading = false;
+      this.render();
+    }
+  }
+
+  async restoreDeletedElement(snapshot) {
+    if (!snapshot || !this.state.selectedFile) {
+      this.setStatus("status.undoEmpty");
+      this.render();
+      return;
+    }
+
+    this.state.loading = true;
+    this.state.error = "";
+    this.render();
+
+    try {
+      const result = await this.callWS({
+        type: `${DOMAIN}/restore_element`,
+        path: this.state.selectedFile,
+        element_path: snapshot.path,
+        element: snapshot.config,
+      });
+      this.state.cards = result.cards || [];
+      this.state.selectedElementPath = Array.isArray(result.element_path)
+        ? [...result.element_path]
+        : [...snapshot.path];
+      const element = this.currentElement();
+      this.state.advancedText = element ? element.fragment || "" : snapshot.advancedText || "";
+      this.state.advancedDirty = false;
+      this.state.dirty = false;
+      this.clearLocalEditTracking();
+      this.setStatus("status.undo", {
+        name: snapshot.label || (element ? this.displayLabel(element) : ""),
+      });
+    } catch (err) {
+      this.state.undoStack = [...this.state.undoStack, snapshot].slice(-30);
+      this.state.error = err.message || String(err);
+    } finally {
+      this.state.loading = false;
+      this.render();
+    }
   }
 
   nudgeSelected(dx, dy, step = 0.1) {
@@ -2254,7 +2353,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (!element) {
       return `
         <section class="inspector">
-          <h2>${this.escape(this.t("ui.inspector"))}</h2>
+          <div class="inspector-head">
+            <div>
+              <h2>${this.escape(this.t("ui.inspector"))}</h2>
+            </div>
+            <div class="inspector-actions">
+              <button id="undoChange" type="button" title="${this.escape(this.t("ui.undoTitle"))}" ${this.state.undoStack.length ? "" : "disabled"}>${this.escape(this.t("ui.undo"))}</button>
+            </div>
+          </div>
           <p class="muted">${this.escape(this.t("ui.inspectorHelp"))}</p>
         </section>
       `;
@@ -2271,6 +2377,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
           </div>
           <div class="inspector-actions">
             <button id="undoChange" type="button" title="${this.escape(this.t("ui.undoTitle"))}" ${this.state.undoStack.length ? "" : "disabled"}>${this.escape(this.t("ui.undo"))}</button>
+            <button id="deleteElement" class="danger" type="button" title="${this.escape(this.t("ui.deleteTitle"))}" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.delete"))}</button>
             <button id="saveElement" class="primary" ${this.state.loading ? "disabled" : ""}>${this.escape(this.t("ui.save"))}</button>
           </div>
         </div>
@@ -2818,6 +2925,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
       .querySelector("#undoChange")
       ?.addEventListener("click", () => this.undoLastChange());
     this.shadowRoot
+      .querySelector("#deleteElement")
+      ?.addEventListener("click", () => this.deleteSelectedElement());
+    this.shadowRoot
       .querySelector("#saveAdvanced")
       ?.addEventListener("click", () => this.saveSelected(true));
 
@@ -3183,6 +3293,16 @@ const styles = `
     background: var(--vde-accent);
     border-color: var(--vde-accent);
     color: white;
+  }
+
+  button.danger {
+    background: color-mix(in srgb, var(--vde-danger) 14%, var(--vde-panel));
+    border-color: color-mix(in srgb, var(--vde-danger) 52%, var(--vde-line));
+    color: var(--vde-danger);
+  }
+
+  button.danger:hover {
+    border-color: var(--vde-danger);
   }
 
   button:disabled {

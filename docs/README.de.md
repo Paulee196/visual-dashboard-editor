@@ -15,6 +15,7 @@ Visual Dashboard Editor ist eine Home-Assistant-Custom-Integration zum visuellen
 - Zeigt Klickflächen zur Fehlersuche bei ungenauer Auswahl.
 - Unterstützt Undo für die letzte lokale Änderung vor dem Speichern.
 - Fügt neue `picture-elements`-Elemente über den `+`-Button hinzu, entweder per Grundformular oder direkt per YAML.
+- Löscht das ausgewählte Element und kann es mit `Rückgängig` wiederherstellen.
 - Speichert das ausgewählte Element zurück ins Dashboard und erstellt vorher ein Backup.
 
 ## Schnellinstallation

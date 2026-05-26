@@ -24,8 +24,10 @@ from .const import (
     LOVELACE_PATH_PREFIX,
     VERSION,
     WS_ADD_ELEMENT,
+    WS_DELETE_ELEMENT,
     WS_LIST_FILES,
     WS_LOAD_FILE,
+    WS_RESTORE_ELEMENT,
     WS_SAVE_ELEMENT,
 )
 
@@ -124,12 +126,25 @@ def _register_websocket_commands(hass: HomeAssistant, websocket_api: Any) -> Non
         vol.Optional("element"): object,
         vol.Optional("fragment"): str,
     }
+    delete_element_schema = {
+        vol.Required("type"): WS_DELETE_ELEMENT,
+        vol.Required("path"): str,
+        vol.Required("element_path"): [vol.Any(str, int)],
+    }
+    restore_element_schema = {
+        vol.Required("type"): WS_RESTORE_ELEMENT,
+        vol.Required("path"): str,
+        vol.Required("element_path"): [vol.Any(str, int)],
+        vol.Required("element"): object,
+    }
 
     for schema, handler in (
         (list_files_schema, _ws_list_files),
         (load_file_schema, _ws_load_file),
         (save_element_schema, _ws_save_element),
         (add_element_schema, _ws_add_element),
+        (delete_element_schema, _ws_delete_element),
+        (restore_element_schema, _ws_restore_element),
     ):
         decorated = websocket_api.async_response(handler)
         decorated = websocket_api.websocket_command(schema)(decorated)
@@ -236,6 +251,64 @@ async def _ws_add_element(
     except Exception as err:  # noqa: BLE001 - user-facing websocket error
         _LOGGER.exception("Failed to add dashboard element")
         connection.send_error(msg["id"], "add_failed", str(err))
+        return
+
+    connection.send_result(msg["id"], result)
+
+
+async def _ws_delete_element(
+    hass: HomeAssistant,
+    connection: Any,
+    msg: dict[str, Any],
+) -> None:
+    """Delete one element from a picture-elements card."""
+    try:
+        if msg["path"].startswith(LOVELACE_PATH_PREFIX):
+            result = await _delete_lovelace_element(
+                hass,
+                msg["path"],
+                msg["element_path"],
+            )
+        else:
+            result = await hass.async_add_executor_job(
+                _delete_element,
+                hass.config.path(),
+                msg["path"],
+                msg["element_path"],
+            )
+    except Exception as err:  # noqa: BLE001 - user-facing websocket error
+        _LOGGER.exception("Failed to delete dashboard element")
+        connection.send_error(msg["id"], "delete_failed", str(err))
+        return
+
+    connection.send_result(msg["id"], result)
+
+
+async def _ws_restore_element(
+    hass: HomeAssistant,
+    connection: Any,
+    msg: dict[str, Any],
+) -> None:
+    """Restore a previously deleted picture-elements element."""
+    try:
+        if msg["path"].startswith(LOVELACE_PATH_PREFIX):
+            result = await _restore_lovelace_element(
+                hass,
+                msg["path"],
+                msg["element_path"],
+                msg["element"],
+            )
+        else:
+            result = await hass.async_add_executor_job(
+                _restore_element,
+                hass.config.path(),
+                msg["path"],
+                msg["element_path"],
+                msg["element"],
+            )
+    except Exception as err:  # noqa: BLE001 - user-facing websocket error
+        _LOGGER.exception("Failed to restore dashboard element")
+        connection.send_error(msg["id"], "restore_failed", str(err))
         return
 
     connection.send_result(msg["id"], result)
@@ -424,6 +497,48 @@ def _add_element(
     return loaded
 
 
+def _delete_element(
+    config_dir: str,
+    relative_path: str,
+    element_path: list[str | int],
+) -> dict[str, Any]:
+    """Delete one element from a YAML dashboard file and save it."""
+    path = _safe_yaml_path(config_dir, relative_path)
+    original = path.read_text(encoding="utf-8")
+    data = _load_yaml(original)
+    _remove_element_at_path(data, element_path)
+
+    new_text = _dump_yaml(data)
+    backup_path = _write_backup(Path(config_dir).resolve(), path, original)
+    path.write_text(new_text, encoding="utf-8")
+
+    loaded = _load_dashboard_file(config_dir, relative_path)
+    loaded["backup_path"] = backup_path.relative_to(Path(config_dir).resolve()).as_posix()
+    return loaded
+
+
+def _restore_element(
+    config_dir: str,
+    relative_path: str,
+    element_path: list[str | int],
+    element: Any,
+) -> dict[str, Any]:
+    """Restore one deleted element into a YAML dashboard file."""
+    path = _safe_yaml_path(config_dir, relative_path)
+    original = path.read_text(encoding="utf-8")
+    data = _load_yaml(original)
+    restored_path = _insert_element_at_path(data, element_path, element)
+
+    new_text = _dump_yaml(data)
+    backup_path = _write_backup(Path(config_dir).resolve(), path, original)
+    path.write_text(new_text, encoding="utf-8")
+
+    loaded = _load_dashboard_file(config_dir, relative_path)
+    loaded["backup_path"] = backup_path.relative_to(Path(config_dir).resolve()).as_posix()
+    loaded["element_path"] = restored_path
+    return loaded
+
+
 async def _save_lovelace_element(
     hass: HomeAssistant,
     dashboard_path: str,
@@ -492,6 +607,62 @@ async def _add_lovelace_element(
     return loaded
 
 
+async def _delete_lovelace_element(
+    hass: HomeAssistant,
+    dashboard_path: str,
+    element_path: list[str | int],
+) -> dict[str, Any]:
+    """Delete one element from a UI-managed Lovelace dashboard."""
+    dashboard, title = _find_lovelace_dashboard(hass, dashboard_path)
+    original = copy.deepcopy(await dashboard.async_load(False))
+    updated = copy.deepcopy(original)
+    _remove_element_at_path(updated, element_path)
+
+    backup_path = await hass.async_add_executor_job(
+        _write_storage_backup,
+        Path(hass.config.path()).resolve(),
+        dashboard_path,
+        title,
+        original,
+    )
+    await dashboard.async_save(updated)
+
+    loaded = await _load_lovelace_dashboard(hass, dashboard_path)
+    loaded["backup_path"] = backup_path.relative_to(
+        Path(hass.config.path()).resolve()
+    ).as_posix()
+    return loaded
+
+
+async def _restore_lovelace_element(
+    hass: HomeAssistant,
+    dashboard_path: str,
+    element_path: list[str | int],
+    element: Any,
+) -> dict[str, Any]:
+    """Restore one deleted element into a UI-managed Lovelace dashboard."""
+    dashboard, title = _find_lovelace_dashboard(hass, dashboard_path)
+    original = copy.deepcopy(await dashboard.async_load(False))
+    updated = copy.deepcopy(original)
+    restored_path = _insert_element_at_path(updated, element_path, _plain(element))
+
+    backup_path = await hass.async_add_executor_job(
+        _write_storage_backup,
+        Path(hass.config.path()).resolve(),
+        dashboard_path,
+        title,
+        original,
+    )
+    await dashboard.async_save(updated)
+
+    loaded = await _load_lovelace_dashboard(hass, dashboard_path)
+    loaded["backup_path"] = backup_path.relative_to(
+        Path(hass.config.path()).resolve()
+    ).as_posix()
+    loaded["element_path"] = restored_path
+    return loaded
+
+
 def _new_element_from_payload(element: Any | None, fragment: str | None) -> Any:
     """Create an element mapping from structured JSON or YAML text."""
     if element is None and fragment is None:
@@ -522,6 +693,43 @@ def _append_element_to_card(
 
     elements.append(element)
     return [*card_path, "elements", len(elements) - 1]
+
+
+def _remove_element_at_path(data: Any, element_path: list[str | int]) -> Any:
+    """Remove an element from an elements list or mapping."""
+    parent = _node_at_path(data, element_path[:-1])
+    key = element_path[-1]
+
+    if isinstance(parent, list):
+        if not isinstance(key, int):
+            raise ValueError("Element path does not point to a list item")
+        return parent.pop(key)
+
+    if isinstance(parent, dict):
+        return parent.pop(key)
+
+    raise ValueError("Element path parent is not editable")
+
+
+def _insert_element_at_path(
+    data: Any, element_path: list[str | int], element: Any
+) -> list[str | int]:
+    """Insert an element at its previous path and return the real restored path."""
+    parent = _node_at_path(data, element_path[:-1])
+    key = element_path[-1]
+
+    if isinstance(parent, list):
+        if not isinstance(key, int):
+            raise ValueError("Element path does not point to a list item")
+        index = max(0, min(key, len(parent)))
+        parent.insert(index, element)
+        return [*element_path[:-1], index]
+
+    if isinstance(parent, dict):
+        parent[key] = element
+        return element_path
+
+    raise ValueError("Element path parent is not editable")
 
 
 def _find_lovelace_dashboard(

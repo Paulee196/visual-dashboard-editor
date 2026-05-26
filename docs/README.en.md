@@ -15,6 +15,7 @@ Visual Dashboard Editor is a Home Assistant custom integration for editing Lovel
 - Shows click areas for troubleshooting selection.
 - Supports undo for the last local edit before saving.
 - Adds new `picture-elements` elements with the `+` button, either through a basic form or direct YAML.
+- Deletes the selected element and can restore it with `Undo`.
 - Saves the selected element back into the dashboard and creates a backup first.
 
 ## Quick Install

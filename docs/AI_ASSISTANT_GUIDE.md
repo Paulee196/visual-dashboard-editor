@@ -23,6 +23,8 @@ The editor can also add a new element to the current `picture-elements` card wit
 
 For sizing, the inspector has resize buttons for width, height and whole-element adjustments. The `Current size as %` action converts the currently rendered element dimensions into percentages relative to the `picture-elements` plan, which is usually the safest responsive sizing model for floorplans.
 
+The inspector can delete the selected element. Deleting writes the dashboard immediately after creating a backup, and the editor's `Undo` button can restore the deleted element to its previous position.
+
 ## First Questions To Ask The User
 
 When the user asks for help changing a dashboard element, ask for the smallest useful context:
@@ -49,6 +51,8 @@ When the user asks for help changing a dashboard element, ask for the smallest u
 6. Use inspector fields, drag, or nudge controls.
 7. Use `Undo` if the change is wrong.
 8. Save the element.
+
+When deleting an element, ask the user to confirm they selected the right item by name. If they delete the wrong one, tell them to press `Undo` before making other structural changes.
 
 ## Useful Troubleshooting
 
@@ -84,7 +88,7 @@ If the user wants an AI to add a new element:
 
 - Do not ask the user for Home Assistant tokens, GitHub tokens, private SSH keys or secrets.
 - Prefer changing one selected element at a time.
-- Recommend using the built-in backup and `Undo` before larger edits.
+- Recommend using the built-in backup and `Undo` before larger edits or deletes.
 - Avoid rewriting a full dashboard YAML when only one element needs a small style change.
 
 ## Suggested User Phrase
