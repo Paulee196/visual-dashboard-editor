@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- Add a `name` field to the inspector, so the selected element display name can be edited without opening YAML.
+- Add drag resize handles to the selected preview element for direct width/height editing.
+- Make inspector editing segments vertically resizable for more flexible work in the right panel.
+
 ## 0.3.3
 
 - Make the basic add-element flow always create a `custom:button-card`.

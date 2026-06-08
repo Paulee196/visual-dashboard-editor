@@ -21,11 +21,13 @@ Po instalaci a restartu můžeš integraci rovnou přidat tady:
 - najde YAML dashboardy s kartou `picture-elements`
 - vykreslí reálný náhled Lovelace dashboardu s editovací vrstvou
 - po kliknutí na prvek zobrazí inspector
-- umí upravit `entity`, `icon`, `image`, `style.left`, `style.top`, `style.width`, `style.height`, `style.opacity`, `style.z-index`, `style.color`, `style.background` a `style.transform`
+- umí upravit `entity`, `name`, `icon`, `image`, `style.left`, `style.top`, `style.width`, `style.height`, `style.opacity`, `style.z-index`, `style.color`, `style.background` a `style.transform`
 - umí prvek posouvat myší přímo v náhledu
 - umí zobrazit reálné klikací plochy pro ladění výběru prvků
 - umí jemně posouvat vybraný prvek tlačítky nebo klávesovými šipkami
 - umí zvětšit/zmenšit vybraný prvek tlačítky a převést aktuální vykreslenou velikost na responzivní procenta
+- umí měnit velikost vybraného prvku tažením za okraje a rohy přímo v náhledu
+- umí roztáhnout editační segmenty v inspectoru, když je potřeba víc místa
 - umí vrátit poslední lokální změnu před uložením
 - umí přidat nový `picture-elements` prvek přes tlačítko `+`; základní formulář vytváří `custom:button-card`, YAML režim zůstává pro ruční zápis
 - umí smazat vybraný prvek a vrátit ho zpět přes `Zpět`

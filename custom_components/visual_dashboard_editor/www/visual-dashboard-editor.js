@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.3";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v24";
+const UI_VERSION = "0.3.4";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v25";
 
 const TRANSLATIONS = {
   cs: {
@@ -48,6 +48,7 @@ const TRANSLATIONS = {
     "ui.deleteTitle": "Smazat vybraný prvek",
     "ui.deleteConfirm": "Opravdu smazat prvek \"{name}\"? Půjde vrátit tlačítkem Zpět.",
     "ui.entity": "Entity",
+    "ui.entityName": "Název",
     "ui.icon": "Ikona",
     "ui.leftPercent": "Vlevo %",
     "ui.topPercent": "Nahoře %",
@@ -191,6 +192,7 @@ const TRANSLATIONS = {
     "ui.deleteTitle": "Delete the selected element",
     "ui.deleteConfirm": "Delete element \"{name}\"? You can restore it with Undo.",
     "ui.entity": "Entity",
+    "ui.entityName": "Name",
     "ui.icon": "Icon",
     "ui.leftPercent": "Left %",
     "ui.topPercent": "Top %",
@@ -334,6 +336,7 @@ const TRANSLATIONS = {
     "ui.deleteTitle": "Ausgewähltes Element löschen",
     "ui.deleteConfirm": "Element \"{name}\" löschen? Du kannst es mit Rückgängig wiederherstellen.",
     "ui.entity": "Entität",
+    "ui.entityName": "Name",
     "ui.icon": "Icon",
     "ui.leftPercent": "Links %",
     "ui.topPercent": "Oben %",
@@ -1293,6 +1296,65 @@ class VisualDashboardEditorPanel extends HTMLElement {
     window.addEventListener("pointerup", up);
   }
 
+  startElementResize(event, cardIndex, elementIndex, handle) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const overlay = this.shadowRoot.querySelector(".edit-overlay");
+    const card = this.state.cards[cardIndex];
+    const element = card && card.elements[elementIndex];
+    if (!overlay || !element) return;
+
+    this.setSelectedElement(cardIndex, elementIndex);
+
+    const rect = overlay.getBoundingClientRect();
+    const style = element.config.style || {};
+    const measured = this.measuredSelectedSizePercent(element);
+    const startWidth = this.sizePercentValue(style.width, measured.width);
+    const startHeight = this.sizePercentValue(style.height, measured.height);
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+    let resizing = false;
+
+    const move = (moveEvent) => {
+      const distance = Math.hypot(moveEvent.clientX - startClientX, moveEvent.clientY - startClientY);
+      if (!resizing && distance < 4) return;
+      if (!resizing) this.pushUndo(element);
+      resizing = true;
+
+      const deltaX = rect.width > 0 ? ((moveEvent.clientX - startClientX) / rect.width) * 100 : 0;
+      const deltaY = rect.height > 0 ? ((moveEvent.clientY - startClientY) / rect.height) * 100 : 0;
+      const affectsWidth = handle.includes("e") || handle.includes("w");
+      const affectsHeight = handle.includes("n") || handle.includes("s");
+      const widthDirection = handle.includes("w") ? -1 : 1;
+      const heightDirection = handle.includes("n") ? -1 : 1;
+
+      element.config.style = element.config.style || {};
+      if (affectsWidth) {
+        const width = startWidth + deltaX * widthDirection * 2;
+        element.config.style.width = `${this.clamp(width, 0.1, 300).toFixed(1)}%`;
+      }
+      if (affectsHeight) {
+        const height = startHeight + deltaY * heightDirection * 2;
+        element.config.style.height = `${this.clamp(height, 0.1, 300).toFixed(1)}%`;
+      }
+
+      this.state.dirty = true;
+      this.markElementLocallyEdited(element);
+      this.markElementLocallyStyled(element);
+      this.setStatus("status.resized");
+      this.updateSelectedElementDom(element);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      this.render();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   pointerToStagePercent(event, rect) {
     const width = rect.width || 1;
     const height = rect.height || 1;
@@ -1882,6 +1944,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     `;
   }
 
+  renderResizeHandles() {
+    return ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+      .map((handle) => `<span class="resize-handle resize-${handle}" data-resize-handle="${handle}"></span>`)
+      .join("");
+  }
+
   cloneConfig(config) {
     return JSON.parse(JSON.stringify(config || {}));
   }
@@ -2285,6 +2353,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
             title="${this.escape(this.displayLabel(element))}"
           >
             ${this.renderElementContent(element)}
+            ${this.samePath(element.path, this.state.selectedElementPath) ? this.renderResizeHandles() : ""}
           </button>
         `;
       })
@@ -2396,6 +2465,10 @@ class VisualDashboardEditorPanel extends HTMLElement {
             <input data-field="entity" value="${this.escape(config.entity || "")}" placeholder="light.kitchen">
           </label>
           <label>
+            ${this.escape(this.t("ui.entityName"))}
+            <input data-field="name" value="${this.escape(config.name || "")}" placeholder="${this.escape(this.t("ui.entityName"))}">
+          </label>
+          <label>
             ${this.escape(this.t("ui.icon"))}
             <input data-field="icon" value="${this.escape(config.icon || "")}" placeholder="mdi:lightbulb">
           </label>
@@ -2439,7 +2512,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
           </label>
         </div>
 
-        <section class="nudge-panel">
+        <section class="nudge-panel resizable-segment">
           <div class="nudge-head">
             <h3>${this.escape(this.t("ui.nudge"))}</h3>
             <p>${this.escape(this.t("ui.keyboardNudgeHelp"))}</p>
@@ -2448,7 +2521,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
           ${this.renderNudgeGroup("1", this.t("ui.nudgeCoarse"))}
         </section>
 
-        <section class="nudge-panel">
+        <section class="nudge-panel resizable-segment">
           <div class="nudge-head">
             <h3>${this.escape(this.t("ui.sizeTools"))}</h3>
             <p>${this.escape(this.t("ui.sizeHelp"))}</p>
@@ -2470,7 +2543,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <input data-field="image" value="${this.escape(config.image || "")}" placeholder="/local/floorplan/light.png">
         </label>
 
-        <details class="advanced" ${this.state.advancedDirty ? "open" : ""}>
+        <details class="advanced resizable-segment" ${this.state.advancedDirty ? "open" : ""}>
           <summary>${this.escape(this.t("ui.advancedYaml"))}</summary>
           <textarea id="advancedText" spellcheck="false">${this.escape(this.state.advancedText)}</textarea>
           <div class="advanced-actions">
@@ -2882,6 +2955,19 @@ class VisualDashboardEditorPanel extends HTMLElement {
         const cardIndex = Number.parseInt(node.dataset.cardIndex, 10);
         const elementIndex = Number.parseInt(node.dataset.elementIndex, 10);
         this.selectElement(cardIndex, elementIndex);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll(".resize-handle").forEach((node) => {
+      node.addEventListener("pointerdown", (event) => {
+        const elementNode = node.closest(".plan-element");
+        const cardIndex = Number.parseInt(elementNode?.dataset.cardIndex || "", 10);
+        const elementIndex = Number.parseInt(elementNode?.dataset.elementIndex || "", 10);
+        this.startElementResize(event, cardIndex, elementIndex, node.dataset.resizeHandle || "se");
+      });
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
       });
     });
 
@@ -3525,6 +3611,74 @@ const styles = `
     z-index: 1000 !important;
   }
 
+  .resize-handle {
+    position: absolute;
+    z-index: 1001;
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(8, 18, 26, 0.84);
+    border-radius: 999px;
+    background: var(--vde-accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
+    pointer-events: auto;
+  }
+
+  .resize-n {
+    top: -6px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: ns-resize;
+  }
+
+  .resize-ne {
+    top: -6px;
+    right: -6px;
+    transform: translate(50%, -50%);
+    cursor: nesw-resize;
+  }
+
+  .resize-e {
+    top: 50%;
+    right: -6px;
+    transform: translate(50%, -50%);
+    cursor: ew-resize;
+  }
+
+  .resize-se {
+    right: -6px;
+    bottom: -6px;
+    transform: translate(50%, 50%);
+    cursor: nwse-resize;
+  }
+
+  .resize-s {
+    bottom: -6px;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    cursor: ns-resize;
+  }
+
+  .resize-sw {
+    bottom: -6px;
+    left: -6px;
+    transform: translate(-50%, 50%);
+    cursor: nesw-resize;
+  }
+
+  .resize-w {
+    top: 50%;
+    left: -6px;
+    transform: translate(-50%, -50%);
+    cursor: ew-resize;
+  }
+
+  .resize-nw {
+    top: -6px;
+    left: -6px;
+    transform: translate(-50%, -50%);
+    cursor: nwse-resize;
+  }
+
   .plan-stage.show-hitboxes .plan-element:not(.click-through):not(.not-rendered) {
     background: rgba(0, 153, 255, 0.14);
     outline: 1px solid rgba(0, 176, 255, 0.72);
@@ -3700,6 +3854,13 @@ const styles = `
     background: color-mix(in srgb, var(--vde-panel) 92%, var(--vde-accent));
   }
 
+  .resizable-segment {
+    resize: vertical;
+    overflow: auto;
+    min-height: 112px;
+    max-height: 520px;
+  }
+
   .nudge-head {
     display: grid;
     gap: 2px;
@@ -3752,6 +3913,12 @@ const styles = `
     margin-top: 16px;
     border-top: 1px solid var(--vde-line);
     padding-top: 12px;
+    min-height: 54px;
+    max-height: 680px;
+  }
+
+  .advanced[open] {
+    min-height: 340px;
   }
 
   .advanced summary {
