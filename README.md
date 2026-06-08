@@ -31,6 +31,7 @@ Po instalaci a restartu můžeš integraci rovnou přidat tady:
 - umí měnit velikost vybraného prvku tažením za okraje a rohy přímo v náhledu
 - umí roztáhnout editační segmenty v inspectoru, když je potřeba víc místa
 - umí vrátit poslední lokální změnu před uložením
+- umí obnovit poslední rozpracovaný dashboard včetně neuložených změn po znovunačtení panelu
 - umí přidat nový `picture-elements` prvek přes tlačítko `+`; základní formulář vytváří `custom:button-card`, YAML režim zůstává pro ruční zápis
 - umí smazat vybraný prvek a vrátit ho zpět přes `Zpět`
 - umí filtrovat seznam prvků podle viditelnosti, hotspotů, widgetů, obrázků a podmínek

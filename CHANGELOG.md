@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.6
+
+- Persist the currently loaded dashboard draft in browser storage, including unsaved element changes, selected card, selected element, YAML fragment text, undo stack and preview settings.
+- Restore the draft automatically when Home Assistant recreates the panel after browser idle time, reconnects or frontend refreshes.
+
 ## 0.3.5
 
 - Add draggable column dividers for resizing the dashboard/elements panel and inspector panel.

@@ -26,6 +26,8 @@ For sizing, the inspector has resize buttons for width, height and whole-element
 
 The inspector can delete the selected element. Deleting writes the dashboard immediately after creating a backup, and the editor's `Undo` button can restore the deleted element to its previous position.
 
+The editor stores the current draft in browser storage. If Home Assistant recreates the panel after idle time, reconnects or a frontend refresh, the selected dashboard, unsaved element changes, selected card, selected element, YAML fragment text, undo stack and preview settings should be restored automatically.
+
 ## First Questions To Ask The User
 
 When the user asks for help changing a dashboard element, ask for the smallest useful context:

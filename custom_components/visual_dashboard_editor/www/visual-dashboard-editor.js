@@ -1,7 +1,8 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.5";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v26";
+const UI_VERSION = "0.3.6";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v27";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
+const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
 const TRANSLATIONS = {
   cs: {
@@ -22,6 +23,7 @@ const TRANSLATIONS = {
     "status.deleted": "Prvek smazán: {name}. Můžeš ho vrátit tlačítkem Zpět.",
     "status.yamlDirty": "YAML fragment je upravený, ještě uložit.",
     "status.added": "Prvek přidán: {name}",
+    "status.draftRestored": "Obnoven rozpracovaný dashboard: {name}",
     "status.realRenderFailed": "Reálné vykreslení se nepovedlo, používám nouzový náhled: {error}",
     "error.apiNotReady": "Home Assistant API ještě není připravené.",
     "ui.working": "Pracuji...",
@@ -168,6 +170,7 @@ const TRANSLATIONS = {
     "status.deleted": "Element deleted: {name}. You can restore it with Undo.",
     "status.yamlDirty": "YAML fragment edited, save still needed.",
     "status.added": "Element added: {name}",
+    "status.draftRestored": "Restored draft dashboard: {name}",
     "status.realRenderFailed": "Real rendering failed, using fallback preview: {error}",
     "error.apiNotReady": "Home Assistant API is not ready yet.",
     "ui.working": "Working...",
@@ -314,6 +317,7 @@ const TRANSLATIONS = {
     "status.deleted": "Element gelöscht: {name}. Du kannst es mit Rückgängig wiederherstellen.",
     "status.yamlDirty": "YAML-Fragment geändert, Speichern ist noch nötig.",
     "status.added": "Element hinzugefügt: {name}",
+    "status.draftRestored": "Dashboard-Entwurf wiederhergestellt: {name}",
     "status.realRenderFailed": "Echtes Rendering fehlgeschlagen, Fallback-Vorschau wird verwendet: {error}",
     "error.apiNotReady": "Die Home Assistant API ist noch nicht bereit.",
     "ui.working": "Arbeite...",
@@ -452,6 +456,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state = {
       files: [],
       selectedFile: "",
+      filePickerValue: "",
       cards: [],
       cardIndex: 0,
       selectedElementPath: null,
@@ -480,6 +485,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this._locallyEditedElementKeys = new Set();
     this._locallyStyledElementKeys = new Set();
     this._renderedElementIndexesByKey = new Map();
+    this.restoreDraftSession();
   }
 
   loadLayoutPreferences() {
@@ -527,6 +533,100 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (!layout) return;
     layout.style.setProperty("--vde-left-width", `${this.state.leftPanelWidth}px`);
     layout.style.setProperty("--vde-inspector-width", `${this.state.inspectorWidth}px`);
+  }
+
+  loadDraftSession() {
+    try {
+      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  persistDraftSession() {
+    if (!this.state.selectedFile || !this.state.cards.length) return;
+    try {
+      localStorage.setItem(
+        DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          version: UI_VERSION,
+          updatedAt: new Date().toISOString(),
+          selectedFile: this.state.selectedFile,
+          cards: this.state.cards,
+          cardIndex: this.state.cardIndex,
+          selectedElementPath: this.state.selectedElementPath,
+          advancedText: this.state.advancedText,
+          advancedDirty: this.state.advancedDirty,
+          advancedExpanded: this.state.advancedExpanded,
+          addElementOpen: this.state.addElementOpen,
+          addElementMode: this.state.addElementMode,
+          addElementYaml: this.state.addElementYaml,
+          elementFilter: this.state.elementFilter,
+          elementTypeFilter: this.state.elementTypeFilter,
+          previewSize: this.state.previewSize,
+          previewOrientation: this.state.previewOrientation,
+          previewScaleMode: this.state.previewScaleMode,
+          showHitboxes: this.state.showHitboxes,
+          undoStack: this.state.undoStack,
+          dirty: this.state.dirty,
+          statusKey: this.state.statusKey,
+          statusParams: this.state.statusParams,
+          locallyEditedElementKeys: [...this._locallyEditedElementKeys],
+          locallyStyledElementKeys: [...this._locallyStyledElementKeys],
+          renderedElementIndexes: [...this._renderedElementIndexesByKey.entries()],
+        })
+      );
+    } catch (_err) {
+      // Draft persistence is best-effort; editing must continue even if storage is full.
+    }
+  }
+
+  queueDraftPersist() {
+    clearTimeout(this._draftPersistTimer);
+    this._draftPersistTimer = setTimeout(() => this.persistDraftSession(), 250);
+  }
+
+  restoreDraftSession() {
+    const draft = this.loadDraftSession();
+    if (!draft?.selectedFile || !Array.isArray(draft.cards) || !draft.cards.length) return false;
+
+    this.state.selectedFile = draft.selectedFile;
+    this.state.filePickerValue = draft.selectedFile;
+    this.state.cards = draft.cards;
+    this.state.cardIndex = Math.round(
+      this.clamp(Number(draft.cardIndex) || 0, 0, Math.max(0, draft.cards.length - 1))
+    );
+    this.state.selectedElementPath = Array.isArray(draft.selectedElementPath)
+      ? [...draft.selectedElementPath]
+      : null;
+    this.state.advancedText = draft.advancedText || "";
+    this.state.advancedDirty = Boolean(draft.advancedDirty);
+    this.state.advancedExpanded = Boolean(draft.advancedExpanded);
+    this.state.addElementOpen = Boolean(draft.addElementOpen);
+    this.state.addElementMode = draft.addElementMode || "basic";
+    this.state.addElementYaml = draft.addElementYaml || "";
+    this.state.elementFilter = draft.elementFilter || "";
+    this.state.elementTypeFilter = draft.elementTypeFilter || "visible";
+    this.state.previewSize = draft.previewSize || this.state.previewSize;
+    this.state.previewOrientation = draft.previewOrientation || this.state.previewOrientation;
+    this.state.previewScaleMode = draft.previewScaleMode || this.state.previewScaleMode;
+    this.state.showHitboxes = Boolean(draft.showHitboxes);
+    this.state.undoStack = Array.isArray(draft.undoStack) ? draft.undoStack.slice(-30) : [];
+    this.state.dirty = Boolean(draft.dirty || draft.advancedDirty);
+    this.state.statusKey = "status.draftRestored";
+    this.state.statusParams = { name: this.draftDashboardName(draft.selectedFile) };
+    this._locallyEditedElementKeys = new Set(Array.isArray(draft.locallyEditedElementKeys) ? draft.locallyEditedElementKeys : []);
+    this._locallyStyledElementKeys = new Set(Array.isArray(draft.locallyStyledElementKeys) ? draft.locallyStyledElementKeys : []);
+    this._renderedElementIndexesByKey = new Map(
+      Array.isArray(draft.renderedElementIndexes) ? draft.renderedElementIndexes : []
+    );
+    return true;
+  }
+
+  draftDashboardName(path) {
+    const text = String(path || "");
+    return text.replace(/^lovelace:\/\//, "") || this.t("ui.chooseDashboard");
   }
 
   set hass(value) {
@@ -582,6 +682,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   disconnectedCallback() {
+    clearTimeout(this._draftPersistTimer);
+    this.persistDraftSession();
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("keydown", this._onKeyDown);
     this._frameResizeObserver?.disconnect();
@@ -605,9 +707,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
     try {
       const result = await this.callWS({ type: `${DOMAIN}/list_files` });
       this.state.files = result.files || [];
-      this.setStatus(
-        this.state.files.length ? "status.selectAndLoad" : "status.noDashboardsFound"
-      );
+      if (!this.state.selectedFile || !this.state.cards.length) {
+        this.setStatus(
+          this.state.files.length ? "status.selectAndLoad" : "status.noDashboardsFound"
+        );
+      }
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -620,26 +724,29 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (!path) return;
     this.state.loading = true;
     this.state.error = "";
-    this.state.selectedFile = path;
-    this.state.selectedElementPath = null;
-    this.state.advancedText = "";
-    this.state.advancedDirty = false;
-    this.state.addElementOpen = false;
-    this.clearLocalEditTracking();
+    this.state.filePickerValue = path;
     this.render();
     try {
       const result = await this.callWS({
         type: `${DOMAIN}/load_file`,
         path,
       });
+      this.state.selectedFile = path;
+      this.state.filePickerValue = path;
       this.state.cards = result.cards || [];
       this.state.cardIndex = 0;
+      this.state.selectedElementPath = null;
+      this.state.advancedText = "";
+      this.state.advancedDirty = false;
+      this.state.addElementOpen = false;
       this.state.undoStack = [];
       this.state.dirty = false;
+      this.clearLocalEditTracking();
       this.setStatus(
         this.state.cards.length ? "status.loadedCards" : "status.loadedNoPicture",
         { count: this.state.cards.length }
       );
+      this.persistDraftSession();
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -704,7 +811,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
   rememberRenderedElementIndex(element, index) {
     const key = this.pathKey(element?.path);
     if (key && Number.isInteger(index)) {
+      if (this._renderedElementIndexesByKey.get(key) === index) return;
       this._renderedElementIndexesByKey.set(key, index);
+      this.queueDraftPersist();
     }
   }
 
@@ -722,6 +831,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.advancedText = element.fragment || "";
     this.state.advancedDirty = false;
     this.setStatus("status.selected", { name: this.displayLabel(element) });
+    this.queueDraftPersist();
     return element;
   }
 
@@ -753,6 +863,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     }
     this.state.dirty = true;
     this.setStatus("status.changesReady");
+    this.queueDraftPersist();
     if (isStyleField) {
       this.markElementLocallyStyled(element);
       if (this.styleFieldAffectsGeometry(path)) {
@@ -832,6 +943,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.markElementLocallyEdited(element);
     this.markElementLocallyStyled(element);
     this.setStatus("status.undo", { name: snapshot.label || this.displayLabel(element) });
+    this.queueDraftPersist();
     this.render();
   }
 
@@ -861,6 +973,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.clearLocalEditTracking();
       this.pushUndoSnapshot(snapshot);
       this.setStatus("status.deleted", { name: label });
+      this.persistDraftSession();
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -899,6 +1012,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.setStatus("status.undo", {
         name: snapshot.label || (element ? this.displayLabel(element) : ""),
       });
+      this.persistDraftSession();
     } catch (err) {
       this.state.undoStack = [...this.state.undoStack, snapshot].slice(-30);
       this.state.error = err.message || String(err);
@@ -932,6 +1046,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.markElementLocallyStyled(element);
     this.setStatus("status.moved");
     this.updateSelectedElementDom(element);
+    this.queueDraftPersist();
   }
 
   resizeSelected(target, direction, step = 0.1) {
@@ -965,6 +1080,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.markElementLocallyStyled(element);
     this.setStatus("status.resized");
     this.updateSelectedElementDom(element);
+    this.queueDraftPersist();
   }
 
   sizePercentValue(value, measuredValue) {
@@ -994,6 +1110,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.markElementLocallyStyled(element);
     this.setStatus("status.responsiveSized");
     this.updateSelectedElementDom(element);
+    this.queueDraftPersist();
   }
 
   measuredSelectedSizePercent(element) {
@@ -1163,6 +1280,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       );
       const nextElement = this.currentElement();
       this.state.advancedText = nextElement ? nextElement.fragment || "" : "";
+      this.persistDraftSession();
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -1293,6 +1411,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.setStatus("status.added", {
         name: nextElement ? this.displayLabel(nextElement) : this.t("ui.addElement"),
       });
+      this.persistDraftSession();
     } catch (err) {
       this.state.error = err.message || String(err);
     } finally {
@@ -1348,6 +1467,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      this.persistDraftSession();
       this.render();
     };
     window.addEventListener("pointermove", move);
@@ -1407,6 +1527,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      this.persistDraftSession();
       this.render();
     };
     window.addEventListener("pointermove", move);
@@ -2852,6 +2973,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   renderFilePicker() {
     const card = this.currentCard();
+    const pickerValue = this.state.filePickerValue || this.state.selectedFile;
     return `
       <aside class="files">
         <div class="files-head">
@@ -2879,7 +3001,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
                       : ` - ${this.t("file.yamlDashboard")}`;
                 return (
                 `<option value="${this.escape(file.path)}" ${
-                  file.path === this.state.selectedFile ? "selected" : ""
+                  file.path === pickerValue ? "selected" : ""
                 }>
                   ${this.escape(label + suffix)}
                 </option>`
@@ -2888,7 +3010,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
             )
             .join("")}
         </select>
-        <button id="loadFile" class="primary" ${!this.state.selectedFile ? "disabled" : ""}>${this.escape(this.t("ui.load"))}</button>
+        <button id="loadFile" class="primary" ${!pickerValue ? "disabled" : ""}>${this.escape(this.t("ui.load"))}</button>
         <p class="muted">${this.escape(this.t("ui.dashboardHelp"))}</p>
         ${card ? this.renderElementList() : ""}
       </aside>
@@ -3001,7 +3123,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   bindEvents() {
     const fileSelect = this.shadowRoot.querySelector("#fileSelect");
     fileSelect?.addEventListener("change", (event) => {
-      this.state.selectedFile = event.target.value;
+      this.state.filePickerValue = event.target.value;
       this.render();
     });
 
@@ -3010,7 +3132,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       ?.addEventListener("click", () => this.loadFiles());
     this.shadowRoot
       .querySelector("#loadFile")
-      ?.addEventListener("click", () => this.loadFile(this.state.selectedFile));
+      ?.addEventListener("click", () => this.loadFile(this.state.filePickerValue || this.state.selectedFile));
     this.shadowRoot
       .querySelector("#toggleLeftPanel")
       ?.addEventListener("click", () => this.toggleLeftPanel());
@@ -3023,12 +3145,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
     this.shadowRoot.querySelector("#elementFilter")?.addEventListener("change", (event) => {
       this.state.elementFilter = event.target.value;
+      this.queueDraftPersist();
       this.render();
     });
 
     this.shadowRoot.querySelectorAll("[data-element-type-filter]").forEach((node) => {
       node.addEventListener("click", () => {
         this.state.elementTypeFilter = node.dataset.elementTypeFilter || "visible";
+        this.queueDraftPersist();
         this.render();
       });
     });
@@ -3040,29 +3164,34 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.advancedText = "";
       this.state.advancedDirty = false;
       this.state.addElementOpen = false;
+      this.queueDraftPersist();
       this.render();
     });
 
     const previewSize = this.shadowRoot.querySelector("#previewSize");
     previewSize?.addEventListener("change", (event) => {
       this.state.previewSize = event.target.value;
+      this.queueDraftPersist();
       this.render();
     });
 
     const previewOrientation = this.shadowRoot.querySelector("#previewOrientation");
     previewOrientation?.addEventListener("change", (event) => {
       this.state.previewOrientation = event.target.value;
+      this.queueDraftPersist();
       this.render();
     });
 
     const previewScaleMode = this.shadowRoot.querySelector("#previewScaleMode");
     previewScaleMode?.addEventListener("change", (event) => {
       this.state.previewScaleMode = event.target.value;
+      this.queueDraftPersist();
       this.render();
     });
 
     this.shadowRoot.querySelector("#showHitboxes")?.addEventListener("change", (event) => {
       this.state.showHitboxes = event.target.checked;
+      this.queueDraftPersist();
       this.render();
     });
 
@@ -3162,15 +3291,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
     this.shadowRoot.querySelector("#openAdvancedModal")?.addEventListener("click", () => {
       this.state.advancedExpanded = true;
+      this.queueDraftPersist();
       this.render();
     });
     this.shadowRoot.querySelector("#closeAdvancedModal")?.addEventListener("click", () => {
       this.state.advancedExpanded = false;
+      this.queueDraftPersist();
       this.render();
     });
     this.shadowRoot.querySelector("#advancedModalBackdrop")?.addEventListener("click", (event) => {
       if (event.target.id === "advancedModalBackdrop") {
         this.state.advancedExpanded = false;
+        this.queueDraftPersist();
         this.render();
       }
     });
@@ -3182,6 +3314,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.state.advancedText = event.target.value;
       this.state.advancedDirty = true;
       this.setStatus("status.yamlDirty");
+      this.queueDraftPersist();
     });
     this.shadowRoot.querySelector("#advancedModalText")?.addEventListener("input", (event) => {
       this.state.advancedText = event.target.value;
@@ -3189,21 +3322,25 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.setStatus("status.yamlDirty");
       const inline = this.shadowRoot.querySelector("#advancedText");
       if (inline) inline.value = event.target.value;
+      this.queueDraftPersist();
     });
 
     this.shadowRoot.querySelector("#openAddElement")?.addEventListener("click", () => {
       this.state.addElementOpen = true;
       this.state.addElementMode = "basic";
       this.state.addElementYaml = this.state.addElementYaml || this.defaultNewElementYaml();
+      this.queueDraftPersist();
       this.render();
     });
     this.shadowRoot.querySelector("#closeAddElement")?.addEventListener("click", () => {
       this.state.addElementOpen = false;
+      this.queueDraftPersist();
       this.render();
     });
     this.shadowRoot.querySelector("#addElementBackdrop")?.addEventListener("click", (event) => {
       if (event.target.id === "addElementBackdrop") {
         this.state.addElementOpen = false;
+        this.queueDraftPersist();
         this.render();
       }
     });
@@ -3211,11 +3348,13 @@ class VisualDashboardEditorPanel extends HTMLElement {
       node.addEventListener("click", () => {
         this.state.addElementMode = node.dataset.addMode || "basic";
         this.state.addElementYaml = this.shadowRoot.querySelector("#newElementYaml")?.value || this.state.addElementYaml || this.defaultNewElementYaml();
+        this.queueDraftPersist();
         this.render();
       });
     });
     this.shadowRoot.querySelector("#newElementYaml")?.addEventListener("input", (event) => {
       this.state.addElementYaml = event.target.value;
+      this.queueDraftPersist();
     });
     this.shadowRoot.querySelector("#createElementBasic")?.addEventListener("click", () => {
       this.addElement(false);

@@ -18,6 +18,7 @@ Visual Dashboard Editor is a Home Assistant custom integration for editing Lovel
 - Lets you resize inspector editing sections when the right panel needs more space.
 - Shows click areas for troubleshooting selection.
 - Supports undo for the last local edit before saving.
+- Restores the last opened dashboard draft, including unsaved changes, after the panel is recreated.
 - Adds new `picture-elements` elements with the `+` button; the basic form creates a `custom:button-card`, while YAML mode remains available for manual snippets.
 - Deletes the selected element and can restore it with `Undo`.
 - Saves the selected element back into the dashboard and creates a backup first.

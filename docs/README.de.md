@@ -18,6 +18,7 @@ Visual Dashboard Editor ist eine Home-Assistant-Custom-Integration zum visuellen
 - Ermöglicht das Vergrößern von Inspector-Abschnitten, wenn im rechten Panel mehr Platz benötigt wird.
 - Zeigt Klickflächen zur Fehlersuche bei ungenauer Auswahl.
 - Unterstützt Undo für die letzte lokale Änderung vor dem Speichern.
+- Stellt den zuletzt geöffneten Dashboard-Entwurf inklusive ungespeicherter Änderungen wieder her, wenn das Panel neu erstellt wird.
 - Fügt neue `picture-elements`-Elemente über den `+`-Button hinzu; das Grundformular erstellt eine `custom:button-card`, YAML bleibt für manuelle Snippets verfügbar.
 - Löscht das ausgewählte Element und kann es mit `Rückgängig` wiederherstellen.
 - Speichert das ausgewählte Element zurück ins Dashboard und erstellt vorher ein Backup.
