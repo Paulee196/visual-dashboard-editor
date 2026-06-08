@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.6";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v27";
+const UI_VERSION = "0.3.7";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v28";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
@@ -485,7 +485,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this._locallyEditedElementKeys = new Set();
     this._locallyStyledElementKeys = new Set();
     this._renderedElementIndexesByKey = new Map();
-    this.restoreDraftSession();
+    const restoredDraft = this.restoreDraftSession();
+    if (!restoredDraft && this.state.leftPanelCollapsed) {
+      this.state.leftPanelCollapsed = false;
+      this.saveLayoutPreferences();
+    }
   }
 
   loadLayoutPreferences() {
@@ -1565,7 +1569,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   toggleLeftPanel() {
-    this.state.leftPanelCollapsed = !this.state.leftPanelCollapsed;
+    this.state.leftPanelCollapsed = this.currentCard() ? !this.state.leftPanelCollapsed : false;
     this.saveLayoutPreferences();
     this.render();
   }
@@ -2523,7 +2527,19 @@ class VisualDashboardEditorPanel extends HTMLElement {
   renderPreview() {
     const card = this.currentCard();
     if (!card) {
-      return `<div class="empty-state">${this.escape(this.t("ui.emptyDashboard"))}</div>`;
+      return `
+        <div class="empty-state">
+          <span>${this.escape(this.t("ui.emptyDashboard"))}</span>
+          ${
+            this.state.leftPanelCollapsed
+              ? `<button id="toggleLeftPanel" class="restore-sidebar" type="button" title="${this.escape(this.t("ui.showDashboardPanel"))}">
+                  <ha-icon icon="mdi:view-sidebar"></ha-icon>
+                  <span>${this.escape(this.t("ui.showDashboardPanel"))}</span>
+                </button>`
+              : ""
+          }
+        </div>
+      `;
     }
     const image = this.imageUrl(card.image);
     const dashboardUrl = this.dashboardPreviewUrl(card.preview_url);

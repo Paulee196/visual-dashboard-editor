@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.7
+
+- Prevent the dashboard picker panel from starting hidden when no dashboard draft is restored.
+- Add a recovery `Show dashboards` action to the empty preview state.
+
 ## 0.3.6
 
 - Persist the currently loaded dashboard draft in browser storage, including unsaved element changes, selected card, selected element, YAML fragment text, undo stack and preview settings.
