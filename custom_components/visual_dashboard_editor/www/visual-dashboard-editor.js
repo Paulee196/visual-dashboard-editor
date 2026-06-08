@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.7";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v28";
+const UI_VERSION = "0.3.8";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v29";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
@@ -2600,7 +2600,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
               </button>`
             : ""
         }
-        <select id="cardSelect">
+        <select id="cardSelect" class="${this.state.cards.length <= 1 ? "single-card-select" : ""}">
           ${this.state.cards
             .map(
               (candidate, index) =>
@@ -3727,24 +3727,35 @@ const styles = `
   }
 
   .preview-toolbar {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
     margin-bottom: 10px;
   }
 
   .preview-toolbar select {
-    flex: 0 1 420px;
-    max-width: 420px;
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
+  #cardSelect {
+    width: clamp(160px, 17vw, 240px);
+  }
+
+  #cardSelect.single-card-select {
+    width: clamp(145px, 13vw, 200px);
   }
 
   #previewSize {
-    flex: 0 0 260px;
+    width: clamp(190px, 17vw, 250px);
   }
 
   #previewOrientation {
-    flex: 0 0 120px;
+    width: 112px;
   }
 
   #previewScaleMode {
-    flex: 0 0 128px;
+    width: 118px;
   }
 
   .hitbox-toggle {

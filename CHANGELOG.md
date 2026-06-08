@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.8
+
+- Make the preview toolbar more compact, especially the `picture-elements` card selector.
+- Allow toolbar controls to wrap more naturally on narrower editor widths.
+
 ## 0.3.7
 
 - Prevent the dashboard picker panel from starting hidden when no dashboard draft is restored.
