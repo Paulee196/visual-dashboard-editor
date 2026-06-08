@@ -1,6 +1,7 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.4";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v25";
+const UI_VERSION = "0.3.5";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v26";
+const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 
 const TRANSLATIONS = {
   cs: {
@@ -102,6 +103,8 @@ const TRANSLATIONS = {
     "ui.chooseDashboard": "Vyber dashboard...",
     "ui.load": "Načíst",
     "ui.dashboardHelp": "Editor zobrazuje jen dashboardy, ve kterých našel kartu picture-elements.",
+    "ui.hideDashboardPanel": "Skrýt panel",
+    "ui.showDashboardPanel": "Zobrazit dashboardy",
     "ui.elements": "Prvky",
     "ui.searchElement": "Hledat prvek",
     "filter.all": "Vše",
@@ -246,6 +249,8 @@ const TRANSLATIONS = {
     "ui.chooseDashboard": "Select dashboard...",
     "ui.load": "Load",
     "ui.dashboardHelp": "The editor shows only dashboards where it found a picture-elements card.",
+    "ui.hideDashboardPanel": "Hide panel",
+    "ui.showDashboardPanel": "Show dashboards",
     "ui.elements": "Elements",
     "ui.searchElement": "Search element",
     "filter.all": "All",
@@ -390,6 +395,8 @@ const TRANSLATIONS = {
     "ui.chooseDashboard": "Dashboard auswählen...",
     "ui.load": "Laden",
     "ui.dashboardHelp": "Der Editor zeigt nur Dashboards, in denen eine picture-elements-Karte gefunden wurde.",
+    "ui.hideDashboardPanel": "Panel ausblenden",
+    "ui.showDashboardPanel": "Dashboards anzeigen",
     "ui.elements": "Elemente",
     "ui.searchElement": "Element suchen",
     "filter.all": "Alle",
@@ -441,6 +448,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    const layoutPreferences = this.loadLayoutPreferences();
     this.state = {
       files: [],
       selectedFile: "",
@@ -459,6 +467,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
       previewOrientation: "landscape",
       previewScaleMode: "fit",
       showHitboxes: false,
+      leftPanelWidth: layoutPreferences.leftPanelWidth,
+      inspectorWidth: layoutPreferences.inspectorWidth,
+      leftPanelCollapsed: layoutPreferences.leftPanelCollapsed,
       undoStack: [],
       dirty: false,
       loading: false,
@@ -469,6 +480,53 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this._locallyEditedElementKeys = new Set();
     this._locallyStyledElementKeys = new Set();
     this._renderedElementIndexesByKey = new Map();
+  }
+
+  loadLayoutPreferences() {
+    const defaults = {
+      leftPanelWidth: 280,
+      inspectorWidth: 360,
+      leftPanelCollapsed: false,
+    };
+    try {
+      const stored = JSON.parse(localStorage.getItem(LAYOUT_STORAGE_KEY) || "{}");
+      return {
+        leftPanelWidth: this.clamp(Number(stored.leftPanelWidth) || defaults.leftPanelWidth, 180, 560),
+        inspectorWidth: this.clamp(Number(stored.inspectorWidth) || defaults.inspectorWidth, 260, 720),
+        leftPanelCollapsed: Boolean(stored.leftPanelCollapsed),
+      };
+    } catch (_err) {
+      return defaults;
+    }
+  }
+
+  saveLayoutPreferences() {
+    try {
+      localStorage.setItem(
+        LAYOUT_STORAGE_KEY,
+        JSON.stringify({
+          leftPanelWidth: this.state.leftPanelWidth,
+          inspectorWidth: this.state.inspectorWidth,
+          leftPanelCollapsed: this.state.leftPanelCollapsed,
+        })
+      );
+    } catch (_err) {
+      // Ignore storage errors; layout still works for the current session.
+    }
+  }
+
+  layoutStyle() {
+    return [
+      `--vde-left-width:${this.state.leftPanelWidth}px`,
+      `--vde-inspector-width:${this.state.inspectorWidth}px`,
+    ].join(";");
+  }
+
+  applyLayoutStyle() {
+    const layout = this.shadowRoot?.querySelector(".layout");
+    if (!layout) return;
+    layout.style.setProperty("--vde-left-width", `${this.state.leftPanelWidth}px`);
+    layout.style.setProperty("--vde-inspector-width", `${this.state.inspectorWidth}px`);
   }
 
   set hass(value) {
@@ -1353,6 +1411,42 @@ class VisualDashboardEditorPanel extends HTMLElement {
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+  }
+
+  startColumnResize(event, column) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const startClientX = event.clientX;
+    const startLeftWidth = this.state.leftPanelWidth;
+    const startInspectorWidth = this.state.inspectorWidth;
+
+    const move = (moveEvent) => {
+      const delta = moveEvent.clientX - startClientX;
+      if (column === "left") {
+        this.state.leftPanelWidth = this.clamp(startLeftWidth + delta, 180, 560);
+      } else {
+        this.state.inspectorWidth = this.clamp(startInspectorWidth - delta, 260, 720);
+      }
+      this.applyLayoutStyle();
+      this.syncPreviewFit();
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      this.saveLayoutPreferences();
+      this.syncPreviewFit();
+    };
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  toggleLeftPanel() {
+    this.state.leftPanelCollapsed = !this.state.leftPanelCollapsed;
+    this.saveLayoutPreferences();
+    this.render();
   }
 
   pointerToStagePercent(event, rect) {
@@ -2361,6 +2455,14 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
     return `
       <div class="preview-toolbar">
+        ${
+          this.state.leftPanelCollapsed
+            ? `<button id="toggleLeftPanel" class="restore-sidebar" type="button" title="${this.escape(this.t("ui.showDashboardPanel"))}">
+                <ha-icon icon="mdi:view-sidebar"></ha-icon>
+                <span>${this.escape(this.t("ui.showDashboardPanel"))}</span>
+              </button>`
+            : ""
+        }
         <select id="cardSelect">
           ${this.state.cards
             .map(
@@ -2421,6 +2523,16 @@ class VisualDashboardEditorPanel extends HTMLElement {
           </div>
         </div>
         <div id="previewRenderError" class="preview-render-error"></div>
+        ${
+          this.currentCard()
+            ? `<div class="preview-actions">
+                <button id="openAddElement" class="add-inline" type="button" title="${this.escape(this.t("ui.addElementTitle"))}">
+                  <ha-icon icon="mdi:plus"></ha-icon>
+                  <span>${this.escape(this.t("ui.addElement"))}</span>
+                </button>
+              </div>`
+            : ""
+        }
       </div>
     `;
   }
@@ -2744,7 +2856,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
       <aside class="files">
         <div class="files-head">
           <h2>${this.escape(this.t("ui.dashboards"))}</h2>
-          <button id="refreshFiles" title="${this.escape(this.t("ui.refreshListTitle"))}">${this.escape(this.t("ui.refreshList"))}</button>
+          <div class="files-actions">
+            <button id="refreshFiles" title="${this.escape(this.t("ui.refreshListTitle"))}">${this.escape(this.t("ui.refreshList"))}</button>
+            <button id="toggleLeftPanel" class="icon-button compact-icon" type="button" title="${this.escape(this.t("ui.hideDashboardPanel"))}" aria-label="${this.escape(this.t("ui.hideDashboardPanel"))}">
+              <ha-icon icon="mdi:chevron-left"></ha-icon>
+            </button>
+          </div>
         </div>
         <select id="fileSelect" size="12">
           <option value="">${this.escape(this.t("ui.chooseDashboard"))}</option>
@@ -2863,19 +2980,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
           ${this.state.dirty || this.state.advancedDirty ? `<span class="pill dirty">${this.escape(this.t("ui.unsaved"))}</span>` : ""}
         </header>
         ${this.state.error ? `<div class="error">${this.escape(this.state.error)}</div>` : ""}
-        <main class="layout">
-          ${this.renderFilePicker()}
+        <main class="layout ${this.state.leftPanelCollapsed ? "left-collapsed" : ""}" style="${this.escape(this.layoutStyle())}">
+          ${this.state.leftPanelCollapsed ? "" : this.renderFilePicker()}
+          ${this.state.leftPanelCollapsed ? "" : `<div class="column-resizer left-column-resizer" data-column-resize="left"></div>`}
           <section class="preview">
             ${this.renderPreview()}
           </section>
+          <div class="column-resizer right-column-resizer" data-column-resize="inspector"></div>
           ${this.renderInspector()}
         </main>
-        ${this.currentCard() ? `
-          <button id="openAddElement" class="add-fab" type="button" title="${this.escape(this.t("ui.addElementTitle"))}">
-            <ha-icon icon="mdi:plus"></ha-icon>
-            <span>${this.escape(this.t("ui.addElement"))}</span>
-          </button>
-        ` : ""}
         ${this.renderAdvancedModal()}
         ${this.renderAddElementModal()}
       </div>
@@ -2898,6 +3011,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.shadowRoot
       .querySelector("#loadFile")
       ?.addEventListener("click", () => this.loadFile(this.state.selectedFile));
+    this.shadowRoot
+      .querySelector("#toggleLeftPanel")
+      ?.addEventListener("click", () => this.toggleLeftPanel());
+
+    this.shadowRoot.querySelectorAll("[data-column-resize]").forEach((node) => {
+      node.addEventListener("pointerdown", (event) => {
+        this.startColumnResize(event, node.dataset.columnResize || "inspector");
+      });
+    });
 
     this.shadowRoot.querySelector("#elementFilter")?.addEventListener("change", (event) => {
       this.state.elementFilter = event.target.value;
@@ -3134,6 +3256,8 @@ const styles = `
     --vde-line: var(--divider-color, #d9dee7);
     --vde-accent: var(--primary-color, #0b6bcb);
     --vde-danger: #b42318;
+    --vde-left-width: 280px;
+    --vde-inspector-width: 360px;
     display: block;
     min-height: 100vh;
     background: var(--vde-bg);
@@ -3217,8 +3341,12 @@ const styles = `
   .layout {
     flex: 1;
     display: grid;
-    grid-template-columns: 280px minmax(360px, 1fr) 360px;
+    grid-template-columns: var(--vde-left-width) 8px minmax(360px, 1fr) 8px var(--vde-inspector-width);
     min-height: 0;
+  }
+
+  .layout.left-collapsed {
+    grid-template-columns: minmax(360px, 1fr) 8px var(--vde-inspector-width);
   }
 
   .files,
@@ -3235,6 +3363,32 @@ const styles = `
     border-left: 1px solid var(--vde-line);
   }
 
+  .column-resizer {
+    position: relative;
+    z-index: 3;
+    width: 8px;
+    min-width: 8px;
+    cursor: col-resize;
+    background: color-mix(in srgb, var(--vde-line) 34%, transparent);
+  }
+
+  .column-resizer::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: 2px;
+    background: color-mix(in srgb, var(--vde-muted) 42%, transparent);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .column-resizer:hover::after,
+  .column-resizer:active::after {
+    opacity: 1;
+  }
+
   .files-head,
   .inspector-head,
   .preview-toolbar {
@@ -3243,6 +3397,12 @@ const styles = `
     justify-content: space-between;
     gap: 10px;
     margin-bottom: 12px;
+  }
+
+  .files-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 
   select,
@@ -3447,10 +3607,17 @@ const styles = `
     min-height: 0;
   }
 
-  .preview-toolbar span {
+  .preview-toolbar > span {
     color: var(--vde-muted);
     font-size: 13px;
     margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .restore-sidebar {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     white-space: nowrap;
   }
 
@@ -3565,6 +3732,12 @@ const styles = `
     margin-top: 8px;
     color: var(--vde-muted);
     font-size: 12px;
+  }
+
+  .preview-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
   }
 
   .missing-bg,
@@ -3904,6 +4077,12 @@ const styles = `
     height: 18px;
   }
 
+  .compact-icon {
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+  }
+
   .wide-button {
     width: 100%;
     margin-top: 10px;
@@ -4035,11 +4214,7 @@ const styles = `
     min-height: 340px;
   }
 
-  .add-fab {
-    position: fixed;
-    right: 24px;
-    bottom: 24px;
-    z-index: 20;
+  .add-inline {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -4052,7 +4227,7 @@ const styles = `
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
   }
 
-  .add-fab ha-icon {
+  .add-inline ha-icon {
     width: 22px;
     height: 22px;
   }
@@ -4079,19 +4254,27 @@ const styles = `
 
   @media (max-width: 1100px) {
     .layout {
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: minmax(220px, var(--vde-left-width)) 6px minmax(320px, 1fr) 6px minmax(280px, var(--vde-inspector-width));
+      overflow-x: auto;
     }
 
-    .inspector {
-      grid-column: 1 / -1;
-      border-left: 0;
-      border-top: 1px solid var(--vde-line);
+    .layout.left-collapsed {
+      grid-template-columns: minmax(320px, 1fr) 6px minmax(280px, var(--vde-inspector-width));
+    }
+
+    .column-resizer {
+      width: 6px;
+      min-width: 6px;
     }
   }
 
   @media (max-width: 760px) {
     .layout {
       display: block;
+    }
+
+    .column-resizer {
+      display: none;
     }
 
     .files,

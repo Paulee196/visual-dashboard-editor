@@ -21,6 +21,8 @@ Po instalaci a restartu můžeš integraci rovnou přidat tady:
 - najde YAML dashboardy s kartou `picture-elements`
 - vykreslí reálný náhled Lovelace dashboardu s editovací vrstvou
 - po kliknutí na prvek zobrazí inspector
+- umí měnit šířku levého dashboard panelu a pravého inspectoru tažením za dělící lištu
+- umí skrýt levý dashboard panel, aby bylo víc místa pro náhled
 - umí upravit `entity`, `name`, `icon`, `image`, `style.left`, `style.top`, `style.width`, `style.height`, `style.opacity`, `style.z-index`, `style.color`, `style.background` a `style.transform`
 - umí prvek posouvat myší přímo v náhledu
 - umí zobrazit reálné klikací plochy pro ladění výběru prvků

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Add draggable column dividers for resizing the dashboard/elements panel and inspector panel.
+- Add a dashboard panel hide/show toggle to free more preview space on smaller screens.
+- Move the `+ Add element` action into the central preview area below the dashboard preview.
+
 ## 0.3.4
 
 - Add a `name` field to the inspector, so the selected element display name can be edited without opening YAML.

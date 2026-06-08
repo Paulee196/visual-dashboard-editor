@@ -18,7 +18,7 @@ Visual Dashboard Editor is a Home Assistant custom integration for editing Lovel
 - `icon`
 - `image`
 
-The editor renders the real dashboard preview and places an invisible edit layer over the rendered `picture-elements` elements. The user can click an element, nudge it, drag it, resize it with preview handles, edit basic fields such as entity/name/icon, resize inspector sections, or open the advanced YAML fragment.
+The editor renders the real dashboard preview and places an invisible edit layer over the rendered `picture-elements` elements. The user can click an element, nudge it, drag it, resize it with preview handles, edit basic fields such as entity/name/icon, resize inspector sections, resize the main columns, hide the dashboard panel, or open the advanced YAML fragment.
 
 The editor can also add a new element to the current `picture-elements` card with the `+ Add element` button. The basic form always creates a `custom:button-card`, because it works best for positioned floorplan controls. The user can still paste a YAML snippet written by an assistant in YAML mode.
 
@@ -50,8 +50,9 @@ When the user asks for help changing a dashboard element, ask for the smallest u
    - `Conditional`
 5. Click the element in the preview or in the list.
 6. Use inspector fields, drag, or nudge controls.
-7. Use `Undo` if the change is wrong.
-8. Save the element.
+7. Resize or hide the side panels if the preview needs more room.
+8. Use `Undo` if the change is wrong.
+9. Save the element.
 
 When deleting an element, ask the user to confirm they selected the right item by name. If they delete the wrong one, tell them to press `Undo` before making other structural changes.
 

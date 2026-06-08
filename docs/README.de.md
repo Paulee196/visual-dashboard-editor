@@ -9,6 +9,8 @@ Visual Dashboard Editor ist eine Home-Assistant-Custom-Integration zum visuellen
 - Fügt Home Assistant ein Seitenleisten-Panel `Visual Dashboard Editor` hinzu.
 - Findet UI-/Storage-Dashboards und YAML-Dashboards mit editierbaren `picture-elements`-Karten.
 - Rendert die echte Lovelace-Dashboard-Vorschau mit einer Editor-Ebene darüber.
+- Ermöglicht das Ändern der Breite des Dashboard-/Elemente-Panels und des Inspectors durch Ziehen der Spaltentrenner.
+- Ermöglicht das Ausblenden des Dashboard-Panels, um mehr Platz für die Vorschau zu haben.
 - Ermöglicht das Anklicken eines Elements und das Bearbeiten von Position, Größe, Entity, Name, Icon, Bild, Deckkraft, Z-index, Farbe, Hintergrund und Transform.
 - Verschiebt das ausgewählte Element per Drag, Nudge-Buttons oder Pfeiltasten.
 - Ändert die Größe des ausgewählten Elements per Buttons und kann die gerenderte Größe in responsive Prozentwerte umwandeln.
