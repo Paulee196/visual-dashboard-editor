@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.13
+
+- Use the real Lovelace dashboard iframe again for UI-managed dashboard previews, inside the fixed device viewport.
+- Apply draft `picture-elements` changes into the iframe card when possible, keeping live inspector updates while preserving real dashboard responsive layout.
+- Add a custom physical display preset that converts physical pixels and DPR into the CSS viewport used by Home Assistant.
+- Add physical resolution and DPR metadata to every preview preset, including Galaxy S22 Ultra QHD+/FHD+.
+
 ## 0.3.12
 
 - Preserve the fixed device viewport after the live preview card mounts or fails to mount.

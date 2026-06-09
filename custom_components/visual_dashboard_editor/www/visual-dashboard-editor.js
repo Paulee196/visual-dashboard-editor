@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.12";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v33";
+const UI_VERSION = "0.3.13";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v34";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
@@ -32,6 +32,11 @@ const TRANSLATIONS = {
     "ui.previewOrientation": "Orientace náhledu",
     "ui.portrait": "Na výšku",
     "ui.landscape": "Na šířku",
+    "ui.customPhysicalDisplay": "Vlastni fyzicky displej",
+    "ui.physicalWidth": "Fyz. sirka",
+    "ui.physicalHeight": "Fyz. vyska",
+    "ui.deviceDpr": "DPR",
+    "ui.viewportSource": "Fyzicky {physicalWidth} x {physicalHeight}, DPR {dpr}",
     "ui.previewScale": "Měřítko náhledu",
     "ui.fitWhole": "Vejít celé",
     "ui.actualCssPx": "1:1 CSS px",
@@ -179,6 +184,11 @@ const TRANSLATIONS = {
     "ui.previewOrientation": "Preview orientation",
     "ui.portrait": "Portrait",
     "ui.landscape": "Landscape",
+    "ui.customPhysicalDisplay": "Custom physical display",
+    "ui.physicalWidth": "Physical width",
+    "ui.physicalHeight": "Physical height",
+    "ui.deviceDpr": "DPR",
+    "ui.viewportSource": "Physical {physicalWidth} x {physicalHeight}, DPR {dpr}",
     "ui.previewScale": "Preview scale",
     "ui.fitWhole": "Fit whole",
     "ui.actualCssPx": "1:1 CSS px",
@@ -326,6 +336,11 @@ const TRANSLATIONS = {
     "ui.previewOrientation": "Vorschauausrichtung",
     "ui.portrait": "Hochformat",
     "ui.landscape": "Querformat",
+    "ui.customPhysicalDisplay": "Eigenes physisches Display",
+    "ui.physicalWidth": "Phys. Breite",
+    "ui.physicalHeight": "Phys. Hoehe",
+    "ui.deviceDpr": "DPR",
+    "ui.viewportSource": "Physisch {physicalWidth} x {physicalHeight}, DPR {dpr}",
     "ui.previewScale": "Vorschaumaßstab",
     "ui.fitWhole": "Ganz einpassen",
     "ui.actualCssPx": "1:1 CSS px",
@@ -471,6 +486,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
       previewSize: "display-24",
       previewOrientation: "landscape",
       previewScaleMode: "fit",
+      customPhysicalWidth: 2316,
+      customPhysicalHeight: 1080,
+      customDpr: 2.625,
       showHitboxes: false,
       leftPanelWidth: layoutPreferences.leftPanelWidth,
       inspectorWidth: layoutPreferences.inspectorWidth,
@@ -572,6 +590,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
           previewSize: this.state.previewSize,
           previewOrientation: this.state.previewOrientation,
           previewScaleMode: this.state.previewScaleMode,
+          customPhysicalWidth: this.state.customPhysicalWidth,
+          customPhysicalHeight: this.state.customPhysicalHeight,
+          customDpr: this.state.customDpr,
           showHitboxes: this.state.showHitboxes,
           undoStack: this.state.undoStack,
           dirty: this.state.dirty,
@@ -616,6 +637,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.state.previewSize = draft.previewSize || this.state.previewSize;
     this.state.previewOrientation = draft.previewOrientation || this.state.previewOrientation;
     this.state.previewScaleMode = draft.previewScaleMode || this.state.previewScaleMode;
+    this.state.customPhysicalWidth = Number(draft.customPhysicalWidth) || this.state.customPhysicalWidth;
+    this.state.customPhysicalHeight = Number(draft.customPhysicalHeight) || this.state.customPhysicalHeight;
+    this.state.customDpr = Number(draft.customDpr) || this.state.customDpr;
     this.state.showHitboxes = Boolean(draft.showHitboxes);
     this.state.undoStack = Array.isArray(draft.undoStack) ? draft.undoStack.slice(-30) : [];
     this.state.dirty = Boolean(draft.dirty || draft.advancedDirty);
@@ -1791,21 +1815,24 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   previewPresets() {
     return [
-      { key: "phone-61", group: this.t("group.phones"), label: '6,1" iPhone / Galaxy S', width: 390, height: 844 },
-      { key: "phone-63", group: this.t("group.phones"), label: '6,3" iPhone Pro / Galaxy S', width: 402, height: 874 },
-      { key: "phone-65", group: this.t("group.phones"), label: '6,5" iPhone / Samsung', width: 414, height: 896 },
-      { key: "phone-67", group: this.t("group.phones"), label: '6,7" iPhone Plus / Galaxy+', width: 430, height: 932 },
-      { key: "phone-68", group: this.t("group.phones"), label: '6,8" Galaxy S22/S23/S24 Ultra', width: 412, height: 915 },
-      { key: "phone-69", group: this.t("group.phones"), label: '6,9" iPhone Max / Galaxy S25 Ultra', width: 440, height: 956 },
-      { key: "tablet-89", group: this.t("group.tablets"), label: `8,9" ${this.t("preset.compactTablet")}`, width: 768, height: 1024 },
-      { key: "tablet-10", group: this.t("group.tablets"), label: '10" tablet', width: 800, height: 1280 },
-      { key: "tablet-11", group: this.t("group.tablets"), label: '11" iPad / Galaxy Tab', width: 834, height: 1194 },
-      { key: "tablet-13", group: this.t("group.tablets"), label: '13" iPad Pro / Galaxy Tab', width: 1024, height: 1366 },
-      { key: "display-13", group: this.t("group.displays"), label: `13" ${this.t("preset.notebook")}`, width: 1280, height: 800 },
-      { key: "display-156", group: this.t("group.displays"), label: `15,6" ${this.t("preset.notebook")}`, width: 1366, height: 768 },
-      { key: "display-24", group: this.t("group.displays"), label: `24" ${this.t("preset.monitorFullHd")}`, width: 1920, height: 1080 },
-      { key: "display-27", group: this.t("group.displays"), label: `27" ${this.t("preset.monitorQhd")}`, width: 2560, height: 1440 },
-      { key: "display-32", group: this.t("group.displays"), label: `32" ${this.t("preset.monitor4k")}`, width: 3840, height: 2160 },
+      { key: "custom-physical", group: this.t("group.phones"), label: this.t("ui.customPhysicalDisplay"), customPhysical: true, width: 412, height: 915 },
+      { key: "phone-61", group: this.t("group.phones"), label: '6,1" iPhone 15', width: 393, height: 852, physicalWidth: 1179, physicalHeight: 2556, dpr: 3, displayInches: 6.1 },
+      { key: "phone-63", group: this.t("group.phones"), label: '6,3" iPhone 16 Pro', width: 402, height: 874, physicalWidth: 1206, physicalHeight: 2622, dpr: 3, displayInches: 6.3 },
+      { key: "phone-65", group: this.t("group.phones"), label: '6,5" iPhone 11 Pro Max', width: 414, height: 896, physicalWidth: 1242, physicalHeight: 2688, dpr: 3, displayInches: 6.5 },
+      { key: "phone-67", group: this.t("group.phones"), label: '6,7" iPhone 16 Plus', width: 430, height: 932, physicalWidth: 1290, physicalHeight: 2796, dpr: 3, displayInches: 6.7 },
+      { key: "phone-68", group: this.t("group.phones"), label: '6,8" Galaxy S22 Ultra QHD+', width: 384, height: 824, physicalWidth: 1440, physicalHeight: 3088, dpr: 3.75, displayInches: 6.8 },
+      { key: "phone-68-fhd", group: this.t("group.phones"), label: '6,8" Galaxy S22 Ultra FHD+', width: 411, height: 882, physicalWidth: 1080, physicalHeight: 2316, dpr: 2.625, displayInches: 6.8 },
+      { key: "phone-69", group: this.t("group.phones"), label: '6,9" iPhone 16 Pro Max', width: 440, height: 956, physicalWidth: 1320, physicalHeight: 2868, dpr: 3, displayInches: 6.9 },
+      { key: "phone-69-galaxy", group: this.t("group.phones"), label: '6,9" Galaxy S25 Ultra QHD+', width: 411, height: 891, physicalWidth: 1440, physicalHeight: 3120, dpr: 3.5, displayInches: 6.9 },
+      { key: "tablet-89", group: this.t("group.tablets"), label: '8,3" iPad mini', width: 744, height: 1133, physicalWidth: 1488, physicalHeight: 2266, dpr: 2, displayInches: 8.3 },
+      { key: "tablet-10", group: this.t("group.tablets"), label: '10,5" Galaxy Tab A8', width: 800, height: 1280, physicalWidth: 1200, physicalHeight: 1920, dpr: 1.5, displayInches: 10.5 },
+      { key: "tablet-11", group: this.t("group.tablets"), label: '11" iPad Pro', width: 834, height: 1194, physicalWidth: 1668, physicalHeight: 2388, dpr: 2, displayInches: 11 },
+      { key: "tablet-13", group: this.t("group.tablets"), label: '12,9" iPad Pro', width: 1024, height: 1366, physicalWidth: 2048, physicalHeight: 2732, dpr: 2, displayInches: 12.9 },
+      { key: "display-13", group: this.t("group.displays"), label: `13" ${this.t("preset.notebook")}`, width: 1280, height: 800, physicalWidth: 2560, physicalHeight: 1600, dpr: 2, displayInches: 13.3 },
+      { key: "display-156", group: this.t("group.displays"), label: `15,6" ${this.t("preset.notebook")}`, width: 1366, height: 768, physicalWidth: 1366, physicalHeight: 768, dpr: 1, displayInches: 15.6 },
+      { key: "display-24", group: this.t("group.displays"), label: `24" ${this.t("preset.monitorFullHd")}`, width: 1920, height: 1080, physicalWidth: 1920, physicalHeight: 1080, dpr: 1, displayInches: 24 },
+      { key: "display-27", group: this.t("group.displays"), label: `27" ${this.t("preset.monitorQhd")}`, width: 2560, height: 1440, physicalWidth: 2560, physicalHeight: 1440, dpr: 1, displayInches: 27 },
+      { key: "display-32", group: this.t("group.displays"), label: `32" ${this.t("preset.monitor4k")}`, width: 3840, height: 2160, physicalWidth: 3840, physicalHeight: 2160, dpr: 1, displayInches: 32 },
     ];
   }
 
@@ -1818,15 +1845,45 @@ class VisualDashboardEditorPanel extends HTMLElement {
 
   previewDimensions() {
     const preset = this.previewPreset();
+    const spec = this.previewViewportSpec(preset);
+    if (spec) {
+      return this.orientedDimensions(spec.cssWidth, spec.cssHeight);
+    }
+    return this.orientedDimensions(preset.width, preset.height);
+  }
+
+  previewViewportSpec(preset = this.previewPreset()) {
+    const physicalWidth = preset.customPhysical
+      ? Number(this.state.customPhysicalWidth)
+      : Number(preset.physicalWidth);
+    const physicalHeight = preset.customPhysical
+      ? Number(this.state.customPhysicalHeight)
+      : Number(preset.physicalHeight);
+    const dpr = preset.customPhysical ? Number(this.state.customDpr) : Number(preset.dpr);
+    if (!Number.isFinite(physicalWidth) || physicalWidth <= 0) return null;
+    if (!Number.isFinite(physicalHeight) || physicalHeight <= 0) return null;
+    if (!Number.isFinite(dpr) || dpr <= 0) return null;
+
+    return {
+      physicalWidth: Math.round(physicalWidth),
+      physicalHeight: Math.round(physicalHeight),
+      dpr: Math.max(0.1, dpr),
+      displayInches: Number(preset.displayInches) || null,
+      cssWidth: Math.max(1, Math.round(physicalWidth / Math.max(0.1, dpr))),
+      cssHeight: Math.max(1, Math.round(physicalHeight / Math.max(0.1, dpr))),
+    };
+  }
+
+  orientedDimensions(width, height) {
     if (this.state.previewOrientation === "landscape") {
       return {
-        width: Math.max(preset.width, preset.height),
-        height: Math.min(preset.width, preset.height),
+        width: Math.max(width, height),
+        height: Math.min(width, height),
       };
     }
     return {
-      width: Math.min(preset.width, preset.height),
-      height: Math.max(preset.width, preset.height),
+      width: Math.min(width, height),
+      height: Math.max(width, height),
     };
   }
 
@@ -2359,6 +2416,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const cardIndex = this.state.cardIndex;
     this._realCard = null;
 
+    if (card?.preview_url) {
+      this.applyPreviewViewportSize();
+      stage?.classList.add("real-ready");
+      stage?.classList.remove("real-failed");
+      if (error) error.textContent = "";
+      this.scheduleOverlaySync();
+      requestAnimationFrame(() => this.syncPreviewFit());
+      setTimeout(() => this.applyDraftToIframePreview(), 250);
+      setTimeout(() => this.applyDraftToIframePreview(), 900);
+      return;
+    }
+
     if (!host || !stage || !card?.config || !this.hass) return;
     this._frameResizeObserver?.disconnect();
     this._frameResizeObserver = null;
@@ -2404,8 +2473,34 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this._realPreviewRenderTimer && clearTimeout(this._realPreviewRenderTimer);
     this._realPreviewRenderTimer = setTimeout(() => {
       this._realPreviewRenderTimer = null;
+      if (this.currentCard()?.preview_url) {
+        this.applyDraftToIframePreview();
+        return;
+      }
       this.mountRealCard();
     }, 140);
+  }
+
+  applyDraftToIframePreview() {
+    const card = this.currentCard();
+    if (!card?.preview_url || !card?.config) return;
+    this.syncCurrentCardConfigFromElements();
+    const iframe = this.shadowRoot?.querySelector(".dashboard-frame");
+    const info = iframe ? this.renderedPictureCardInfoFromIframe(iframe) : null;
+    if (!info?.card || typeof info.card.setConfig !== "function") return;
+
+    try {
+      info.card.setConfig(this.cloneConfig(card.config));
+      info.card.hass = this.hass;
+      this.applyPreviewViewportSize();
+      this.scheduleOverlaySync();
+      requestAnimationFrame(() => this.syncPreviewFit());
+    } catch (err) {
+      const error = this.shadowRoot?.querySelector("#previewRenderError");
+      if (error) {
+        error.textContent = this.t("status.realRenderFailed", { error: err?.message || err });
+      }
+    }
   }
 
   scheduleOverlaySync() {
@@ -2695,11 +2790,24 @@ class VisualDashboardEditorPanel extends HTMLElement {
       `;
     }
     const image = this.imageUrl(card.image);
+    const dashboardUrl = this.dashboardPreviewUrl(card.preview_url);
     const visibleCount = card.elements.filter((element) =>
       this.hasPosition((element.config || {}).style || {}) &&
       this.isElementConditionActive(element)
     ).length;
     const dimensions = this.previewDimensions();
+    const isCustomPhysical = this.previewPreset().customPhysical;
+    const viewportSpec = this.previewViewportSpec();
+    const viewportSource = viewportSpec
+      ? this.t("ui.viewportSource", {
+        physicalWidth: viewportSpec.physicalWidth,
+        physicalHeight: viewportSpec.physicalHeight,
+        dpr: viewportSpec.dpr,
+      })
+      : "";
+    const physicalWidth = Number(this.state.customPhysicalWidth) || 0;
+    const physicalHeight = Number(this.state.customPhysicalHeight) || 0;
+    const customDpr = Number(this.state.customDpr) || 1;
     const presetGroups = this.previewPresets().reduce((groups, preset) => {
       groups[preset.group] = groups[preset.group] || [];
       groups[preset.group].push(preset);
@@ -2781,6 +2889,24 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <option value="portrait" ${this.state.previewOrientation === "portrait" ? "selected" : ""}>${this.escape(this.t("ui.portrait"))}</option>
           <option value="landscape" ${this.state.previewOrientation === "landscape" ? "selected" : ""}>${this.escape(this.t("ui.landscape"))}</option>
         </select>
+        ${
+          isCustomPhysical
+            ? `<div class="custom-viewport-fields">
+                <label title="${this.escape(this.t("ui.physicalWidth"))}">
+                  <span>${this.escape(this.t("ui.physicalWidth"))}</span>
+                  <input id="customPhysicalWidth" type="number" min="1" step="1" value="${this.escape(physicalWidth || "")}">
+                </label>
+                <label title="${this.escape(this.t("ui.physicalHeight"))}">
+                  <span>${this.escape(this.t("ui.physicalHeight"))}</span>
+                  <input id="customPhysicalHeight" type="number" min="1" step="1" value="${this.escape(physicalHeight || "")}">
+                </label>
+                <label title="${this.escape(this.t("ui.deviceDpr"))}">
+                  <span>${this.escape(this.t("ui.deviceDpr"))}</span>
+                  <input id="customDpr" type="number" min="0.1" step="0.001" value="${this.escape(customDpr || "")}">
+                </label>
+              </div>`
+            : ""
+        }
         <select id="previewScaleMode" title="${this.escape(this.t("ui.previewScale"))}">
           <option value="fit" ${this.state.previewScaleMode === "fit" ? "selected" : ""}>${this.escape(this.t("ui.fitWhole"))}</option>
           <option value="actual" ${this.state.previewScaleMode === "actual" ? "selected" : ""}>${this.escape(this.t("ui.actualCssPx"))}</option>
@@ -2789,12 +2915,16 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <input id="showHitboxes" type="checkbox" ${this.state.showHitboxes ? "checked" : ""}>
           ${this.escape(this.t("ui.showHitboxes"))}
         </label>
-        <span>${this.escape(this.t("ui.positionedCount", { width: dimensions.width, height: dimensions.height, count: visibleCount }))}</span>
+        <span title="${this.escape(viewportSource)}">${this.escape(this.t("ui.positionedCount", { width: dimensions.width, height: dimensions.height, count: visibleCount }))}</span>
       </div>
       <div class="preview-frame scale-${this.escape(this.state.previewScaleMode)}">
         <div id="previewFit" class="preview-fit">
           <div class="plan-stage ${this.state.showHitboxes ? "show-hitboxes" : ""}" style="width:${dimensions.width}px;height:${dimensions.height}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
-            <div id="realCardHost" class="real-card-host"></div>
+            ${
+              dashboardUrl
+                ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="${this.escape(this.t("ui.officialPreview"))}"></iframe>`
+                : `<div id="realCardHost" class="real-card-host"></div>`
+            }
             <div class="fallback-preview">
               ${
                 image
@@ -3311,6 +3441,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
       .querySelector("#toggleLeftPanel")
       ?.addEventListener("click", () => this.toggleLeftPanel());
 
+    this.shadowRoot.querySelector(".dashboard-frame")?.addEventListener("load", () => {
+      this.applyPreviewViewportSize();
+      this.applyDraftToIframePreview();
+      setTimeout(() => this.applyDraftToIframePreview(), 250);
+    });
+
     this.shadowRoot.querySelectorAll("[data-column-resize]").forEach((node) => {
       node.addEventListener("pointerdown", (event) => {
         this.startColumnResize(event, node.dataset.columnResize || "inspector");
@@ -3355,6 +3491,21 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.queueDraftPersist();
       this.render();
     });
+
+    const bindCustomViewportInput = (selector, stateKey, minValue = 1) => {
+      const input = this.shadowRoot.querySelector(selector);
+      input?.addEventListener("change", (event) => {
+        const value = Number.parseFloat(event.target.value);
+        if (Number.isFinite(value)) {
+          this.state[stateKey] = Math.max(minValue, value);
+          this.queueDraftPersist();
+          this.render();
+        }
+      });
+    };
+    bindCustomViewportInput("#customPhysicalWidth", "customPhysicalWidth", 1);
+    bindCustomViewportInput("#customPhysicalHeight", "customPhysicalHeight", 1);
+    bindCustomViewportInput("#customDpr", "customDpr", 0.1);
 
     const previewScaleMode = this.shadowRoot.querySelector("#previewScaleMode");
     previewScaleMode?.addEventListener("change", (event) => {
@@ -3974,6 +4125,34 @@ const styles = `
 
   #previewScaleMode {
     width: 118px;
+  }
+
+  .custom-viewport-fields {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .custom-viewport-fields label {
+    min-height: 36px;
+    display: inline-flex;
+    grid-template-columns: none;
+    align-items: center;
+    gap: 4px;
+    color: var(--vde-muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .custom-viewport-fields input {
+    width: 76px;
+    min-height: 34px;
+    padding: 6px 7px;
+  }
+
+  .custom-viewport-fields #customDpr {
+    width: 70px;
   }
 
   .hitbox-toggle {
