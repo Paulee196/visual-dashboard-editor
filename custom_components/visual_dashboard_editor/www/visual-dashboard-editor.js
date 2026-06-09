@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.10";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v31";
+const UI_VERSION = "0.3.11";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v32";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
@@ -2327,18 +2327,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const fitRect = fit.getBoundingClientRect();
     const availableWidth = Math.max(280, frame.clientWidth || frameRect.width || dimensions.width);
     const availableHeight = Math.max(280, window.innerHeight - fitRect.top - 26);
-    const rawHeight = Math.max(stage.scrollHeight, stage.offsetHeight, 220);
+    const viewportHeight = Math.max(dimensions.height, 220);
     if (this.state.previewScaleMode === "actual") {
       stage.style.setProperty("--preview-scale", "1");
-      fit.style.height = `${Math.ceil(rawHeight)}px`;
+      fit.style.height = `${Math.ceil(viewportHeight)}px`;
       return;
     }
 
     const maxUpscale = dimensions.width <= 520 ? 2.1 : dimensions.width <= 1100 ? 1.45 : 1;
-    const scale = Math.min(maxUpscale, availableWidth / dimensions.width, availableHeight / rawHeight);
+    const scale = Math.min(maxUpscale, availableWidth / dimensions.width, availableHeight / viewportHeight);
 
     stage.style.setProperty("--preview-scale", String(scale));
-    fit.style.height = `${Math.ceil(rawHeight * scale)}px`;
+    fit.style.height = `${Math.ceil(viewportHeight * scale)}px`;
   }
 
   async mountRealCard() {
@@ -2783,7 +2783,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       </div>
       <div class="preview-frame scale-${this.escape(this.state.previewScaleMode)}">
         <div id="previewFit" class="preview-fit">
-          <div class="plan-stage ${this.state.showHitboxes ? "show-hitboxes" : ""}" style="width:${dimensions.width}px;" data-viewport="${dimensions.width}x${dimensions.height}">
+          <div class="plan-stage ${this.state.showHitboxes ? "show-hitboxes" : ""}" style="width:${dimensions.width}px;height:${dimensions.height}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
             <div id="realCardHost" class="real-card-host"></div>
             <div class="fallback-preview">
               ${
@@ -4033,9 +4033,11 @@ const styles = `
     height: var(--preview-height, auto);
     min-height: 220px;
     margin: 0 auto;
-    border: 1px solid var(--vde-line);
     border-radius: 8px;
-    overflow: hidden;
+    outline: 1px solid var(--vde-line);
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
     background:
       linear-gradient(45deg, rgba(0, 0, 0, 0.035) 25%, transparent 25%),
       linear-gradient(-45deg, rgba(0, 0, 0, 0.035) 25%, transparent 25%),
@@ -4047,6 +4049,11 @@ const styles = `
     transform-origin: top center;
   }
 
+  .plan-stage::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
   .preview-frame.scale-actual .plan-stage {
     margin: 0;
     transform-origin: top left;
@@ -4055,6 +4062,8 @@ const styles = `
   .real-card-host {
     position: relative;
     z-index: 1;
+    width: 100%;
+    min-height: 100%;
     pointer-events: none;
   }
 

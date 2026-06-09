@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.11
+
+- Make the preview stage a fixed-size viewport that always uses the selected device preset width and height.
+- Scale the fixed viewport visually in fit mode without changing the CSS size used by the rendered dashboard card.
+
 ## 0.3.10
 
 - Render the editable preview from the current draft card instead of the saved dashboard iframe, so name and other inspector edits update live before saving.
