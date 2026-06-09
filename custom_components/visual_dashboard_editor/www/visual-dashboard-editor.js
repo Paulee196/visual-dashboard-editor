@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.8";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v29";
+const UI_VERSION = "0.3.9";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v30";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
@@ -485,6 +485,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this._locallyEditedElementKeys = new Set();
     this._locallyStyledElementKeys = new Set();
     this._renderedElementIndexesByKey = new Map();
+    this._liveEditSnapshots = new Map();
     const restoredDraft = this.restoreDraftSession();
     if (!restoredDraft && this.state.leftPanelCollapsed) {
       this.state.leftPanelCollapsed = false;
@@ -692,6 +693,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     window.removeEventListener("keydown", this._onKeyDown);
     this._frameResizeObserver?.disconnect();
     this._overlaySyncTimer && clearInterval(this._overlaySyncTimer);
+    this._realPreviewRenderTimer && clearTimeout(this._realPreviewRenderTimer);
   }
 
   async callWS(message) {
@@ -845,10 +847,33 @@ class VisualDashboardEditorPanel extends HTMLElement {
     this.render();
   }
 
-  updateField(path, value) {
+  liveEditKey(element, path) {
+    const key = this.pathKey(element?.path);
+    return key ? `${key}:${path}` : "";
+  }
+
+  pushLiveUndo(element, path) {
+    const key = this.liveEditKey(element, path);
+    if (!key || this._liveEditSnapshots.has(key)) return;
+    this._liveEditSnapshots.set(key, true);
+    this.pushUndo(element);
+  }
+
+  finishLiveEdit(path) {
+    const element = this.currentElement();
+    const key = this.liveEditKey(element, path);
+    if (key) this._liveEditSnapshots.delete(key);
+  }
+
+  fieldValueMatches(currentValue, nextValue) {
+    const current = currentValue === undefined || currentValue === null ? "" : String(currentValue);
+    const next = nextValue === undefined || nextValue === null ? "" : String(nextValue);
+    return current === next;
+  }
+
+  updateField(path, value, options = {}) {
     const element = this.currentElement();
     if (!element) return;
-    this.pushUndo(element);
     const isStyleField = path.startsWith("style.");
     const parts = path.split(".");
     let target = element.config;
@@ -860,6 +885,13 @@ class VisualDashboardEditorPanel extends HTMLElement {
       target = target[part];
     }
     const key = parts[0];
+    if (this.fieldValueMatches(target[key], value)) return;
+    if (options.live) {
+      this.pushLiveUndo(element, path);
+    } else {
+      this.pushUndo(element);
+      this.finishLiveEdit(path);
+    }
     if (value === undefined || value === "") {
       delete target[key];
     } else {
@@ -876,17 +908,18 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this.updateSelectedElementDom(element);
       return;
     }
-    this.render();
+    this.updateSelectedElementDom(element);
+    this.scheduleRealPreviewRefresh();
   }
 
-  updatePercentField(path, rawValue) {
+  updatePercentField(path, rawValue, options = {}) {
     const numeric = Number.parseFloat(rawValue);
-    this.updateField(path, Number.isFinite(numeric) ? `${numeric}%` : "");
+    this.updateField(path, Number.isFinite(numeric) ? `${numeric}%` : "", options);
   }
 
-  updateNumberField(path, rawValue) {
+  updateNumberField(path, rawValue, options = {}) {
     const numeric = Number.parseFloat(rawValue);
-    this.updateField(path, Number.isFinite(numeric) ? String(numeric) : "");
+    this.updateField(path, Number.isFinite(numeric) ? String(numeric) : "", options);
   }
 
   undoSnapshot(element = this.currentElement(), action = "update") {
@@ -1150,22 +1183,83 @@ class VisualDashboardEditorPanel extends HTMLElement {
     );
     if (node) {
       this.applyLocalOverlayStyle(node, element);
+      this.applyLocalOverlayContent(node, element);
       const rendered = this.renderedElementForOverlayNode(node, element);
       if (rendered) this.applyLocalRenderedStyle(rendered, element);
     }
     const style = element.config.style || {};
-    const leftInput = this.shadowRoot.querySelector('[data-percent-field="style.left"]');
-    const topInput = this.shadowRoot.querySelector('[data-percent-field="style.top"]');
-    const widthInput = this.shadowRoot.querySelector('[data-percent-field="style.width"]');
-    const heightInput = this.shadowRoot.querySelector('[data-percent-field="style.height"]');
-    if (leftInput) leftInput.value = this.percentToNumber(style.left);
-    if (topInput) topInput.value = this.percentToNumber(style.top);
-    if (widthInput) widthInput.value = this.percentToNumber(style.width);
-    if (heightInput) heightInput.value = this.percentToNumber(style.height);
+    this.setInputValueIfIdle('[data-percent-field="style.left"]', this.percentToNumber(style.left));
+    this.setInputValueIfIdle('[data-percent-field="style.top"]', this.percentToNumber(style.top));
+    this.setInputValueIfIdle('[data-percent-field="style.width"]', this.percentToNumber(style.width));
+    this.setInputValueIfIdle('[data-percent-field="style.height"]', this.percentToNumber(style.height));
+    this.setInputValueIfIdle('[data-number-field="style.opacity"]', style.opacity || "");
+    this.setInputValueIfIdle('[data-number-field="style.z-index"]', style["z-index"] || "");
+    this.setInputValueIfIdle('[data-field="entity"]', element.config.entity || "");
+    this.setInputValueIfIdle('[data-field="name"]', element.config.name || "");
+    this.setInputValueIfIdle('[data-field="icon"]', element.config.icon || "");
+    this.setInputValueIfIdle('[data-field="image"]', element.config.image || "");
+    this.setInputValueIfIdle('[data-field="style.color"]', style.color || "");
+    this.setInputValueIfIdle('[data-field="style.background"]', style.background || "");
+    this.setInputValueIfIdle('[data-field="style.transform"]', style.transform || "");
+    this.setColorPickerValueIfPossible("style.color", style.color);
+    this.setColorPickerValueIfPossible("style.background", style.background);
+    const transparent = this.shadowRoot.querySelector('[data-transparent-field="style.background"]');
+    if (transparent) transparent.checked = this.isTransparentColor(style.background);
+    const inspectorTitle = this.shadowRoot.querySelector(".inspector-head h2");
+    if (inspectorTitle) inspectorTitle.textContent = this.displayLabel(element);
+    const inspectorMeta = this.shadowRoot.querySelector(".inspector-head p");
+    if (inspectorMeta) {
+      inspectorMeta.textContent = `${element.config.card_type || element.config.type || "element"}${element.line ? ` - ${this.t("ui.line", { line: element.line })}` : ""}`;
+    }
+    const listTitle = this.shadowRoot.querySelector(
+      `.element-list-item[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"] .element-list-title`
+    );
+    if (listTitle) listTitle.textContent = this.displayLabel(element);
+    const listMeta = this.shadowRoot.querySelector(
+      `.element-list-item[data-card-index="${cardIndex}"][data-element-index="${elementIndex}"] .element-list-meta`
+    );
+    if (listMeta) listMeta.textContent = this.elementSummary(element);
     const status = this.shadowRoot.querySelector(".topbar p");
     if (status) status.textContent = this.statusText();
+    this.syncDirtyPill();
     const undo = this.shadowRoot.querySelector("#undoChange");
     if (undo) undo.disabled = !this.state.undoStack.length;
+  }
+
+  syncDirtyPill() {
+    const topbar = this.shadowRoot?.querySelector(".topbar");
+    if (!topbar) return;
+    let dirty = topbar.querySelector(".pill.dirty");
+    if (this.state.dirty || this.state.advancedDirty) {
+      if (!dirty) {
+        dirty = document.createElement("span");
+        dirty.className = "pill dirty";
+        topbar.appendChild(dirty);
+      }
+      dirty.textContent = this.t("ui.unsaved");
+      return;
+    }
+    dirty?.remove();
+  }
+
+  setInputValueIfIdle(selector, value) {
+    const input = this.shadowRoot?.querySelector(selector);
+    if (!input || this.shadowRoot?.activeElement === input) return;
+    input.value = value ?? "";
+  }
+
+  setColorPickerValueIfPossible(path, value) {
+    const input = this.shadowRoot?.querySelector(`[data-color-field="${path}"]`);
+    if (!input || this.shadowRoot?.activeElement === input) return;
+    input.value = this.colorPickerValue(value);
+  }
+
+  applyLocalOverlayContent(node, element) {
+    const icon = node.querySelector(".chip-icon");
+    if (icon) icon.setAttribute("icon", this.previewIcon(element));
+    const label = node.querySelector(".chip-label");
+    if (label) label.textContent = this.displayLabel(element);
+    node.title = this.displayLabel(element);
   }
 
   renderedElementForOverlayNode(node, element) {
@@ -1190,7 +1284,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     node.style.transform = this.cleanCssValue(style.transform, "translate(-50%, -50%)");
     this.setOptionalStyle(node, "width", style.width);
     this.setOptionalStyle(node, "height", style.height);
+    this.setOptionalStyle(node, "opacity", style.opacity);
     this.setOptionalStyle(node, "z-index", style["z-index"] ?? style.zIndex);
+    const chip = node.querySelector(".element-chip");
+    this.setOptionalStyle(chip, "color", style.color);
+    this.setOptionalStyle(chip, "background", style.background);
+    this.setOptionalStyle(chip, "background-color", style["background-color"]);
     node.dataset.styleLeft = style.left || "";
     node.dataset.styleTop = style.top || "";
     node.dataset.styleWidth = style.width || "";
@@ -1224,7 +1323,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   setRenderedStyle(node, property, value) {
-    if (!node || value === undefined || value === null || value === "") return;
+    if (!node) return;
+    if (value === undefined || value === null || value === "") {
+      node.style.removeProperty(property);
+      return;
+    }
     node.style.setProperty(property, this.cleanCssValue(value));
   }
 
@@ -1618,6 +1721,11 @@ class VisualDashboardEditorPanel extends HTMLElement {
       return `#${short[1].split("").map((char) => `${char}${char}`).join("")}`;
     }
     return "#ffffff";
+  }
+
+  isTransparentColor(value) {
+    const raw = String(value || "").trim().toLowerCase().replace(/\s+/g, "");
+    return raw === "transparent" || raw === "rgba(0,0,0,0)" || raw === "#00000000";
   }
 
   imageUrl(value) {
@@ -2255,6 +2363,15 @@ class VisualDashboardEditorPanel extends HTMLElement {
     }
   }
 
+  scheduleRealPreviewRefresh() {
+    if (this.currentCard()?.preview_url) return;
+    this._realPreviewRenderTimer && clearTimeout(this._realPreviewRenderTimer);
+    this._realPreviewRenderTimer = setTimeout(() => {
+      this._realPreviewRenderTimer = null;
+      this.mountRealCard();
+    }, 140);
+  }
+
   scheduleOverlaySync() {
     this._overlaySyncTimer && clearInterval(this._overlaySyncTimer);
     const run = () => this.syncOverlayToRenderedCard();
@@ -2748,6 +2865,9 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <label>
             ${this.escape(this.t("ui.color"))}
             <div class="color-field">
+              <button class="color-picker-button" type="button" data-open-color-picker="style.color" title="${this.escape(this.t("ui.color"))}">
+                <ha-icon icon="mdi:palette"></ha-icon>
+              </button>
               <input data-color-field="style.color" type="color" value="${this.escape(this.colorPickerValue(style.color))}">
               <input data-field="style.color" value="${this.escape(style.color || "")}" placeholder="${this.escape(this.t("ui.colorPlaceholder"))}">
             </div>
@@ -2755,9 +2875,16 @@ class VisualDashboardEditorPanel extends HTMLElement {
           <label>
             ${this.escape(this.t("ui.background"))}
             <div class="color-field">
+              <button class="color-picker-button" type="button" data-open-color-picker="style.background" title="${this.escape(this.t("ui.background"))}">
+                <ha-icon icon="mdi:palette"></ha-icon>
+              </button>
               <input data-color-field="style.background" type="color" value="${this.escape(this.colorPickerValue(style.background))}">
               <input data-field="style.background" value="${this.escape(style.background || "")}" placeholder="${this.escape(this.t("ui.colorPlaceholder"))}">
             </div>
+            <span class="inline-check transparent-check">
+              <input data-transparent-field="style.background" type="checkbox" ${this.isTransparentColor(style.background) ? "checked" : ""}>
+              <span>${this.escape(this.t("ui.transparentBackground"))}</span>
+            </span>
           </label>
         </div>
 
@@ -3247,27 +3374,87 @@ class VisualDashboardEditorPanel extends HTMLElement {
     });
 
     this.shadowRoot.querySelectorAll("[data-field]").forEach((input) => {
+      const field = input.dataset.field;
+      const apply = (event) => {
+        const value = event.target.value.trim();
+        this.updateField(field, value, { live: true });
+        if (field === "style.background") {
+          const transparent = this.shadowRoot.querySelector(`[data-transparent-field="${field}"]`);
+          if (transparent) transparent.checked = this.isTransparentColor(value);
+        }
+      };
+      input.addEventListener("input", apply);
       input.addEventListener("change", (event) => {
-        this.updateField(input.dataset.field, event.target.value.trim());
+        apply(event);
+        this.finishLiveEdit(field);
       });
+      input.addEventListener("blur", () => this.finishLiveEdit(field));
     });
     this.shadowRoot.querySelectorAll("[data-percent-field]").forEach((input) => {
+      const field = input.dataset.percentField;
+      const apply = (event) => this.updatePercentField(field, event.target.value, { live: true });
+      input.addEventListener("input", apply);
       input.addEventListener("change", (event) => {
-        this.updatePercentField(input.dataset.percentField, event.target.value);
+        apply(event);
+        this.finishLiveEdit(field);
       });
+      input.addEventListener("blur", () => this.finishLiveEdit(field));
     });
     this.shadowRoot.querySelectorAll("[data-number-field]").forEach((input) => {
+      const field = input.dataset.numberField;
+      const apply = (event) => this.updateNumberField(field, event.target.value, { live: true });
+      input.addEventListener("input", apply);
       input.addEventListener("change", (event) => {
-        this.updateNumberField(input.dataset.numberField, event.target.value);
+        apply(event);
+        this.finishLiveEdit(field);
+      });
+      input.addEventListener("blur", () => this.finishLiveEdit(field));
+    });
+    this.shadowRoot.querySelectorAll("[data-open-color-picker]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const field = button.dataset.openColorPicker;
+        const picker = this.shadowRoot.querySelector(`[data-color-field="${field}"]`);
+        if (!picker) return;
+        try {
+          if (picker.showPicker) {
+            picker.showPicker();
+          } else {
+            picker.click();
+          }
+        } catch (_err) {
+          picker.click();
+        }
       });
     });
     this.shadowRoot.querySelectorAll("[data-color-field]").forEach((input) => {
-      input.addEventListener("change", (event) => {
+      const apply = (event) => {
         const field = input.dataset.colorField;
         const value = event.target.value;
         const pairedText = this.shadowRoot.querySelector(`input[data-field="${field}"]`);
         if (pairedText) pairedText.value = value;
-        this.updateField(field, value);
+        const transparent = this.shadowRoot.querySelector(`[data-transparent-field="${field}"]`);
+        if (transparent) transparent.checked = false;
+        this.updateField(field, value, { live: true });
+      };
+      input.addEventListener("input", apply);
+      input.addEventListener("change", (event) => {
+        apply(event);
+        this.finishLiveEdit(input.dataset.colorField);
+      });
+    });
+    this.shadowRoot.querySelectorAll("[data-transparent-field]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const field = input.dataset.transparentField;
+        const pairedText = this.shadowRoot.querySelector(`input[data-field="${field}"]`);
+        const currentValue = pairedText?.value.trim() || "";
+        const value = event.target.checked
+          ? "transparent"
+          : this.isTransparentColor(currentValue)
+            ? ""
+            : currentValue;
+        if (pairedText) pairedText.value = value;
+        this.updateField(field, value, { live: true });
+        this.finishLiveEdit(field);
       });
     });
 
@@ -3382,12 +3569,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     });
     const addColor = this.shadowRoot.querySelector("#newElementColor");
     const addColorText = this.shadowRoot.querySelector("#newElementColorText");
-    addColor?.addEventListener("change", (event) => {
+    addColor?.addEventListener("input", (event) => {
       if (addColorText) addColorText.value = event.target.value;
     });
     const addBackground = this.shadowRoot.querySelector("#newElementBackground");
     const addBackgroundText = this.shadowRoot.querySelector("#newElementBackgroundText");
-    addBackground?.addEventListener("change", (event) => {
+    addBackground?.addEventListener("input", (event) => {
       if (addBackgroundText) addBackgroundText.value = event.target.value;
     });
     const addTransparentBackground = this.shadowRoot.querySelector("#newElementTransparentBackground");
@@ -4169,9 +4356,21 @@ const styles = `
 
   .color-field {
     display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 34px 44px minmax(0, 1fr);
     gap: 6px;
     align-items: center;
+  }
+
+  .color-picker-button {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+  }
+
+  .color-picker-button ha-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .color-field input[type="color"] {
@@ -4179,6 +4378,10 @@ const styles = `
     min-width: 44px;
     height: 34px;
     padding: 2px;
+  }
+
+  .transparent-check {
+    margin-top: 6px;
   }
 
   .wide-field {

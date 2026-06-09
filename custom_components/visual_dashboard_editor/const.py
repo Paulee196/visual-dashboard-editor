@@ -1,9 +1,9 @@
 """Constants for Visual Dashboard Editor."""
 
 DOMAIN = "visual_dashboard_editor"
-VERSION = "0.3.8"
+VERSION = "0.3.9"
 
-PANEL_ELEMENT = "visual-dashboard-editor-panel-v29"
+PANEL_ELEMENT = "visual-dashboard-editor-panel-v30"
 PANEL_TITLE = "Visual Dashboard Editor"
 PANEL_ICON = "mdi:vector-square-edit"
 PANEL_URL = "visual-dashboard-editor"

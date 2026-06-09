@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.9
+
+- Update inspector fields live while typing or choosing values, including name, entity, icon, opacity, z-index, transform, image, text color and background color.
+- Add palette buttons for inspector color fields and a transparent background toggle for selected elements.
+- Keep live edits grouped into a single undo step per field interaction.
+
 ## 0.3.8
 
 - Make the preview toolbar more compact, especially the `picture-elements` card selector.
