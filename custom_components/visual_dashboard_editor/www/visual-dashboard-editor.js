@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.11";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v32";
+const UI_VERSION = "0.3.12";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v33";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
@@ -2341,6 +2341,16 @@ class VisualDashboardEditorPanel extends HTMLElement {
     fit.style.height = `${Math.ceil(viewportHeight * scale)}px`;
   }
 
+  applyPreviewViewportSize() {
+    const stage = this.shadowRoot?.querySelector(".plan-stage");
+    if (!stage) return;
+    const dimensions = this.previewDimensions();
+    stage.style.width = `${dimensions.width}px`;
+    stage.style.height = `${dimensions.height}px`;
+    stage.style.setProperty("--preview-height", `${dimensions.height}px`);
+    stage.dataset.viewport = `${dimensions.width}x${dimensions.height}`;
+  }
+
   async mountRealCard() {
     const host = this.shadowRoot.querySelector("#realCardHost");
     const stage = this.shadowRoot.querySelector(".plan-stage");
@@ -2371,7 +2381,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       this._realCard = element;
       stage.classList.add("real-ready");
       stage.classList.remove("real-failed");
-      stage.style.height = "";
+      this.applyPreviewViewportSize();
       if (error) error.textContent = "";
       requestAnimationFrame(() => this.syncPreviewFit());
       this.scheduleOverlaySync();
@@ -2381,7 +2391,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       host.replaceChildren();
       stage.classList.remove("real-ready");
       stage.classList.add("real-failed");
-      stage.style.height = "";
+      this.applyPreviewViewportSize();
       if (error) {
         error.textContent = this.t("status.realRenderFailed", { error: err?.message || err });
       }

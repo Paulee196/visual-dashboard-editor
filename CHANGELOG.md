@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.12
+
+- Preserve the fixed device viewport after the live preview card mounts or fails to mount.
+- Re-apply the selected preview width and height after live render refreshes so the stage cannot fall back to content-driven sizing.
+
 ## 0.3.11
 
 - Make the preview stage a fixed-size viewport that always uses the selected device preset width and height.
