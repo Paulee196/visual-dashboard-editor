@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.10
+
+- Render the editable preview from the current draft card instead of the saved dashboard iframe, so name and other inspector edits update live before saving.
+- Make phone/tablet presets scale to the rendered `picture-elements` card height instead of forcing the full device viewport height as the card height.
+
 ## 0.3.9
 
 - Update inspector fields live while typing or choosing values, including name, entity, icon, opacity, z-index, transform, image, text color and background color.

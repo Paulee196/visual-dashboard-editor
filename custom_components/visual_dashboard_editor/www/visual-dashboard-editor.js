@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.9";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v30";
+const UI_VERSION = "0.3.10";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v31";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 
@@ -871,6 +871,34 @@ class VisualDashboardEditorPanel extends HTMLElement {
     return current === next;
   }
 
+  elementConfigRef(element) {
+    const card = this.currentCard();
+    if (!card?.config || !Array.isArray(card.path) || !Array.isArray(element?.path)) return null;
+    if (!card.path.every((part, index) => element.path[index] === part)) return null;
+
+    const relativePath = element.path.slice(card.path.length);
+    if (!relativePath.length) return null;
+
+    let parent = card.config;
+    for (const part of relativePath.slice(0, -1)) {
+      if (!parent || typeof parent !== "object") return null;
+      parent = parent[part];
+    }
+    if (!parent || typeof parent !== "object") return null;
+    return { parent, key: relativePath[relativePath.length - 1] };
+  }
+
+  syncElementConfigToCard(element) {
+    const ref = this.elementConfigRef(element);
+    if (ref) ref.parent[ref.key] = element.config;
+  }
+
+  syncCurrentCardConfigFromElements() {
+    const card = this.currentCard();
+    if (!Array.isArray(card?.elements)) return;
+    card.elements.forEach((element) => this.syncElementConfigToCard(element));
+  }
+
   updateField(path, value, options = {}) {
     const element = this.currentElement();
     if (!element) return;
@@ -897,6 +925,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     } else {
       target[key] = value;
     }
+    this.syncElementConfigToCard(element);
     this.state.dirty = true;
     this.setStatus("status.changesReady");
     this.queueDraftPersist();
@@ -972,6 +1001,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     }
 
     element.config = this.cloneConfig(snapshot.config);
+    this.syncElementConfigToCard(element);
     element.fragment = snapshot.advancedText || "";
     this.state.selectedElementPath = [...snapshot.path];
     this.state.advancedText = element.fragment || "";
@@ -1078,6 +1108,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     element.config.style = element.config.style || {};
     element.config.style.left = leftText;
     element.config.style.top = topText;
+    this.syncElementConfigToCard(element);
     this.state.dirty = true;
     this.markElementLocallyEdited(element);
     this.markElementLocallyStyled(element);
@@ -1111,6 +1142,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       }
       element.config.style[key] = `${this.clamp(current + delta, 0.1, 300).toFixed(1)}%`;
     }
+    this.syncElementConfigToCard(element);
 
     this.state.dirty = true;
     this.markElementLocallyEdited(element);
@@ -1142,6 +1174,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     if (Number.isFinite(measured.height) && currentHeight && currentHeight !== "auto") {
       element.config.style.height = `${this.clamp(measured.height, 0.1, 300).toFixed(2)}%`;
     }
+    this.syncElementConfigToCard(element);
     this.state.dirty = true;
     this.markElementLocallyEdited(element);
     this.markElementLocallyStyled(element);
@@ -1565,6 +1598,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
       element.config.style = element.config.style || {};
       element.config.style.left = leftText;
       element.config.style.top = topText;
+      this.syncElementConfigToCard(element);
       this.state.dirty = true;
       this.markElementLocallyEdited(element);
       this.markElementLocallyStyled(element);
@@ -1624,6 +1658,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
         const height = startHeight + deltaY * heightDirection * 2;
         element.config.style.height = `${this.clamp(height, 0.1, 300).toFixed(1)}%`;
       }
+      this.syncElementConfigToCard(element);
 
       this.state.dirty = true;
       this.markElementLocallyEdited(element);
@@ -2292,7 +2327,7 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const fitRect = fit.getBoundingClientRect();
     const availableWidth = Math.max(280, frame.clientWidth || frameRect.width || dimensions.width);
     const availableHeight = Math.max(280, window.innerHeight - fitRect.top - 26);
-    const rawHeight = Math.max(stage.scrollHeight, stage.offsetHeight, dimensions.height, 220);
+    const rawHeight = Math.max(stage.scrollHeight, stage.offsetHeight, 220);
     if (this.state.previewScaleMode === "actual") {
       stage.style.setProperty("--preview-scale", "1");
       fit.style.height = `${Math.ceil(rawHeight)}px`;
@@ -2314,20 +2349,12 @@ class VisualDashboardEditorPanel extends HTMLElement {
     const cardIndex = this.state.cardIndex;
     this._realCard = null;
 
-    if (card?.preview_url) {
-      stage?.classList.add("real-ready");
-      stage?.classList.remove("real-failed");
-      requestAnimationFrame(() => this.syncPreviewFit());
-      this.scheduleOverlaySync();
-      setTimeout(() => this.syncPreviewFit(), 200);
-      return;
-    }
-
     if (!host || !stage || !card?.config || !this.hass) return;
     this._frameResizeObserver?.disconnect();
     this._frameResizeObserver = null;
 
     try {
+      this.syncCurrentCardConfigFromElements();
       const config = this.cloneConfig(card.config);
       let element;
       if (window.loadCardHelpers) {
@@ -2364,7 +2391,6 @@ class VisualDashboardEditorPanel extends HTMLElement {
   }
 
   scheduleRealPreviewRefresh() {
-    if (this.currentCard()?.preview_url) return;
     this._realPreviewRenderTimer && clearTimeout(this._realPreviewRenderTimer);
     this._realPreviewRenderTimer = setTimeout(() => {
       this._realPreviewRenderTimer = null;
@@ -2659,7 +2685,6 @@ class VisualDashboardEditorPanel extends HTMLElement {
       `;
     }
     const image = this.imageUrl(card.image);
-    const dashboardUrl = this.dashboardPreviewUrl(card.preview_url);
     const visibleCount = card.elements.filter((element) =>
       this.hasPosition((element.config || {}).style || {}) &&
       this.isElementConditionActive(element)
@@ -2758,12 +2783,8 @@ class VisualDashboardEditorPanel extends HTMLElement {
       </div>
       <div class="preview-frame scale-${this.escape(this.state.previewScaleMode)}">
         <div id="previewFit" class="preview-fit">
-          <div class="plan-stage ${this.state.showHitboxes ? "show-hitboxes" : ""}" style="width:${dimensions.width}px;--preview-height:${dimensions.height}px;" data-viewport="${dimensions.width}x${dimensions.height}">
-            ${
-              dashboardUrl
-                ? `<iframe class="dashboard-frame" src="${this.escape(dashboardUrl)}" title="${this.escape(this.t("ui.officialPreview"))}"></iframe>`
-                : `<div id="realCardHost" class="real-card-host"></div>`
-            }
+          <div class="plan-stage ${this.state.showHitboxes ? "show-hitboxes" : ""}" style="width:${dimensions.width}px;" data-viewport="${dimensions.width}x${dimensions.height}">
+            <div id="realCardHost" class="real-card-host"></div>
             <div class="fallback-preview">
               ${
                 image
