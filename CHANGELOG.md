@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.14
+
+- Replace the internal "first MVP" wording in the large YAML file error with neutral user-facing text.
+
 ## 0.3.13
 
 - Use the real Lovelace dashboard iframe again for UI-managed dashboard previews, inside the fixed device viewport.

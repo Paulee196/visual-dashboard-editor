@@ -1,6 +1,6 @@
 const DOMAIN = "visual_dashboard_editor";
-const UI_VERSION = "0.3.13";
-const ELEMENT_NAME = "visual-dashboard-editor-panel-v34";
+const UI_VERSION = "0.3.14";
+const ELEMENT_NAME = "visual-dashboard-editor-panel-v35";
 const LAYOUT_STORAGE_KEY = `${DOMAIN}:layout`;
 const DRAFT_STORAGE_KEY = `${DOMAIN}:draft`;
 

@@ -772,7 +772,7 @@ def _safe_yaml_path(config_dir: str, relative_path: str) -> Path:
     if not path.exists():
         raise ValueError("YAML file does not exist")
     if path.stat().st_size > MAX_FILE_BYTES:
-        raise ValueError("YAML file is too large for the first MVP")
+        raise ValueError("YAML file is too large to edit safely")
 
     return path
 
