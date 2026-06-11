@@ -1,6 +1,6 @@
 # Visual Dashboard Editor
 
-**Sprache:** [Čeština](../README.md) | [English](README.en.md) | Deutsch
+**Sprache:** [English](../README.md) | Deutsch
 
 Visual Dashboard Editor ist eine Home-Assistant-Custom-Integration zum visuellen Bearbeiten von Lovelace-`picture-elements`-Dashboards. Sie ist besonders für Floorplan- und 3D-Plan-Dashboards gedacht, bei denen kleine Positionsänderungen in großen YAML-Dateien mühsam sind.
 

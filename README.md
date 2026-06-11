@@ -1,96 +1,143 @@
-# Visual Dashboard Editor
+# 🎛️ Visual Dashboard Editor for Home Assistant
 
-**Jazyk / Language / Sprache:** Čeština | [English](docs/README.en.md) | [Deutsch](docs/README.de.md)
+[![GitHub Release](https://img.shields.io/github/v/release/Paulee196/visual-dashboard-editor?style=flat-square)](https://github.com/Paulee196/visual-dashboard-editor/releases)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
+[![Downloads](https://img.shields.io/github/downloads/Paulee196/visual-dashboard-editor/total?style=flat-square)](https://github.com/Paulee196/visual-dashboard-editor/releases)
 
-Vizuální editor pro Home Assistant dashboardy. Cíl je jednoduchý: místo hledání v tisících řádků YAML kódu klikneš na prvek ve floorplanu nebo 3D plánu a upravíš jeho základní parametry přímo v UI.
+Edit Home Assistant Lovelace `picture-elements` dashboards visually - built for floorplans and 3D plan dashboards where moving one element inside a large YAML file is slow and easy to get wrong. Open the editor from the sidebar, click an element in the rendered dashboard preview, adjust it in the inspector and save it back with a backup.
 
-Aktuální verze je zaměřená na karty typu `picture-elements`, protože právě ty se často používají pro 3D floorplan dashboardy. Editor umí načítat UI/storage dashboardy vytvořené v Home Assistantu a také YAML dashboardy, které opravdu obsahují editovatelnou kartu `picture-elements`.
+[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Paulee196&repository=visual-dashboard-editor&category=integration)
+[![Open your Home Assistant instance and start setting up the integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=visual_dashboard_editor)
 
-## Rychlá Instalace
+## ✨ Features
 
-[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Paulee196&repository=visual-dashboard-editor&category=integration)
+- **Sidebar visual editor** - edit `picture-elements` dashboards directly from Home Assistant
+- **Real Lovelace preview** - UI-managed dashboards render inside the actual dashboard iframe with an editor overlay
+- **YAML dashboard support** - raw YAML dashboards are detected when they contain editable `picture-elements` cards
+- **Inspector editing** - update `entity`, `name`, `icon`, `image`, position, size, opacity, z-index, color, background and transform
+- **Drag, nudge and resize** - move elements with the mouse, buttons, keyboard arrows or resize handles
+- **Responsive sizing tools** - convert the currently rendered size into percentage-based width and height
+- **Device preview presets** - phone, tablet and display presets use physical resolution + DPR metadata to calculate the CSS viewport
+- **Custom physical display** - enter your own physical resolution and DPR for exact device matching
+- **Element management** - add new `picture-elements` entries, delete the selected element and restore it with undo
+- **Filtering and hitboxes** - filter by visible elements, hotspots, widgets, images or conditions and show real click areas
+- **Draft persistence** - restores the last open dashboard, undo stack and unsaved local changes after the panel is recreated
+- **Safe saves** - creates timestamped backups before modifying storage or YAML dashboards
+- **Localized UI** - Czech, English and German strings follow your Home Assistant language
 
-Po instalaci a restartu můžeš integraci rovnou přidat tady:
+## 📦 Installation
 
-[![Open your Home Assistant instance and start setting up Visual Dashboard Editor.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=visual_dashboard_editor)
+### HACS (recommended)
 
-## Co To Umí Teď
+1. HACS → ⋮ → **Custom repositories** → add `Paulee196/visual-dashboard-editor` (type: *Integration*)
+2. Search for **Visual Dashboard Editor** and download it
+3. Restart Home Assistant
+4. **Settings → Devices & Services → Add Integration** → search for **Visual Dashboard Editor**
+5. Open **Visual Dashboard Editor** from the Home Assistant sidebar
 
-- přidá do Home Assistantu sidebar panel `Visual Dashboard Editor`
-- najde UI/storage dashboardy v Home Assistantu
-- najde YAML dashboardy s kartou `picture-elements`
-- vykreslí reálný náhled Lovelace dashboardu s editovací vrstvou
-- po kliknutí na prvek zobrazí inspector
-- umí měnit šířku levého dashboard panelu a pravého inspectoru tažením za dělící lištu
-- umí skrýt levý dashboard panel, aby bylo víc místa pro náhled
-- umí upravit `entity`, `name`, `icon`, `image`, `style.left`, `style.top`, `style.width`, `style.height`, `style.opacity`, `style.z-index`, `style.color`, `style.background` a `style.transform`
-- umí prvek posouvat myší přímo v náhledu
-- umí zobrazit reálné klikací plochy pro ladění výběru prvků
-- umí jemně posouvat vybraný prvek tlačítky nebo klávesovými šipkami
-- umí zvětšit/zmenšit vybraný prvek tlačítky a převést aktuální vykreslenou velikost na responzivní procenta
-- umí měnit velikost vybraného prvku tažením za okraje a rohy přímo v náhledu
-- umí roztáhnout editační segmenty v inspectoru, když je potřeba víc místa
-- umí vrátit poslední lokální změnu před uložením
-- umí obnovit poslední rozpracovaný dashboard včetně neuložených změn po znovunačtení panelu
-- umí přidat nový `picture-elements` prvek přes tlačítko `+`; základní formulář vytváří `custom:button-card`, YAML režim zůstává pro ruční zápis
-- umí smazat vybraný prvek a vrátit ho zpět přes `Zpět`
-- umí filtrovat seznam prvků podle viditelnosti, hotspotů, widgetů, obrázků a podmínek
-- umí zobrazit a uložit YAML fragment vybraného prvku
-- před uložením dělá backup do `.visual_dashboard_editor_backups`
+### Manual
 
-## Instalace Pro Test
-
-### Přes HACS Jako Custom Repository
-
-1. Klikni na tlačítko v sekci `Rychlá Instalace`, nebo v HACS přidej repozitář jako `Integration`.
-2. Nainstaluj `Visual Dashboard Editor`.
-3. Restartuj Home Assistant.
-4. V `Nastavení -> Zařízení a služby -> Přidat integraci` přidej `Visual Dashboard Editor`.
-5. V sidebaru otevři `Visual Dashboard Editor`.
-
-### Ručně
-
-1. Zkopíruj složku `custom_components/visual_dashboard_editor` do `/config/custom_components/visual_dashboard_editor`.
-2. Restartuj Home Assistant.
-3. Přidej integraci v UI, nebo do `configuration.yaml` vlož:
+1. Copy `custom_components/visual_dashboard_editor` into `/config/custom_components/`
+2. Restart Home Assistant
+3. Add the integration from **Settings → Devices & Services**, or add this to `configuration.yaml`:
 
 ```yaml
 visual_dashboard_editor:
 ```
 
-4. Restartuj Home Assistant.
+4. Restart Home Assistant and open the sidebar panel
 
-## Jak To Použít
+## 🖼️ Editing dashboards
 
-1. Otevři sidebar panel `Visual Dashboard Editor`.
-2. Vyber UI dashboard nebo YAML dashboard.
-3. Klikni na `Načíst`.
-4. Vyber `picture-elements` kartu, pokud jich je v dashboardu víc.
-5. Klikni na prvek ve floorplanu.
-6. Uprav hodnoty v inspectoru nebo prvek posuň myší.
-7. Klikni na `Uložit`.
+Open **Visual Dashboard Editor** in the sidebar, pick a UI/storage dashboard or a YAML dashboard and click **Load**. If the dashboard contains multiple `picture-elements` cards, choose the card you want to edit from the toolbar. Click an element in the preview, change values in the inspector, drag or resize it in the overlay and save when the local changes look right.
 
-## Důležité Limity
+The editor is intentionally focused on `picture-elements` because that is the card type most commonly used for floorplans, 3D home views and layered dashboard layouts.
 
-- Storage dashboardy se ukládají přes Home Assistant Lovelace runtime. Backup se ukládá jako JSON.
-- YAML dashboardy se v seznamu zobrazují jen tehdy, když obsahují kartu `picture-elements`.
-- Ukládání YAML souboru se snaží zachovat zbytek souboru přes `ruamel.yaml`, ale upravený element může ztratit část ručního formátování nebo komentářů přímo uvnitř daného elementu.
-- Zatím nehledá prvek kliknutím v normálním dashboardu. Je to samostatný editor panel. Floating tlačítko do běžného dashboardu je další možný krok.
+## 📱 Device previews
 
-## Proč Takhle
+Preview presets are calculated the same way a browser lays out the dashboard:
 
-Home Assistant umí vlastní panely a vlastní karty přes frontend custom elements. Custom karty mají vlastní grafické editory, ale ty fungují pro jednu konkrétní kartu. Tenhle editor jde jinou cestou: backend načte existující dashboard, najde `picture-elements` konfiguraci a frontend nad ní postaví specializovaný visual inspector.
+```text
+CSS viewport = physical resolution / devicePixelRatio
+```
 
-## Plán Dalších Kroků
+For example, a phone rendering at `2316 x 1080` with `DPR 2.625` produces roughly `882 x 411` CSS pixels in landscape. The preview frame is then fixed to that CSS viewport and only visually scaled to fit the editor workspace.
 
-- přesnější měření mobilních viewportů
-- resize handles přímo v náhledu
-- redo
-- diff před uložením
-- vyhledávání prvků podle entity
-- podpora `custom:config-template-card`
-- volitelný frontend resource, který přidá malé `Visual edit` tlačítko přímo do dashboardu
+## 🗂 Dashboard data
 
-## Pomoc Přes AI
+The editor works with `picture-elements` cards such as:
 
-Pro asistenty je v repozitáři připravený krátký návod: [AI_ASSISTANT_GUIDE.md](docs/AI_ASSISTANT_GUIDE.md). Popisuje, jaké informace si má AI od uživatele vyžádat a jak bezpečně pomáhat s úpravami jednotlivých prvků.
+```yaml
+type: picture-elements
+image: /local/floorplan.png
+elements:
+  - type: state-icon
+    entity: light.kitchen
+    style:
+      left: 42%
+      top: 58%
+```
+
+UI-managed dashboards are saved through the Home Assistant Lovelace runtime. YAML dashboards are loaded from files inside the Home Assistant config directory and are written back with `ruamel.yaml`.
+
+## 🛡 Safety model
+
+- The panel requires Home Assistant admin access.
+- YAML paths must stay inside the Home Assistant config directory.
+- Only `.yaml` and `.yml` files are editable.
+- Large YAML files are rejected instead of being modified blindly.
+- Every save creates a backup in `.visual_dashboard_editor_backups`.
+- YAML saves try to preserve the surrounding file, but formatting or comments inside the edited element may change.
+
+## 🧱 Repository layout
+
+```text
+custom_components/visual_dashboard_editor/
+  __init__.py                  WebSocket API, dashboard loading and saving
+  config_flow.py               UI setup entry point
+  const.py                     version and panel constants
+  manifest.json                Home Assistant integration metadata
+  strings.json                 config flow strings
+  translations/                localized Home Assistant strings
+  www/visual-dashboard-editor.js
+                               sidebar panel, preview, inspector and editor UI
+.github/workflows/release.yml  GitHub release workflow
+docs/AI_ASSISTANT_GUIDE.md     notes for AI-assisted dashboard editing
+examples/                      example picture-elements YAML
+```
+
+## 🗺 Roadmap
+
+- Redo
+- Diff before saving
+- Search elements by entity
+- Better support for `custom:config-template-card`
+- Optional dashboard resource with a small **Visual edit** button inside normal dashboards
+
+---
+
+<details>
+<summary>🇨🇿 <strong>Rychlý start česky</strong></summary>
+
+1. **HACS** → Custom repositories → přidejte `Paulee196/visual-dashboard-editor` jako *Integration*, stáhněte a restartujte Home Assistant.
+2. **Nastavení → Zařízení a služby → Přidat integraci → Visual Dashboard Editor**.
+3. V levém menu otevřete **Visual Dashboard Editor**.
+4. Vyberte UI/storage dashboard nebo YAML dashboard, který obsahuje kartu `picture-elements`.
+5. Klikněte na prvek ve floorplanu, upravte hodnoty v inspectoru nebo ho přesuňte myší.
+6. Po kontrole klikněte na **Uložit**. Před zápisem se vytvoří backup.
+
+Editor je určený hlavně pro floorplany a 3D plány. U YAML souborů se snaží zachovat zbytek souboru, ale uvnitř upraveného prvku se může změnit ruční formátování nebo komentáře.
+
+</details>
+
+<details>
+<summary>🇩🇪 <strong>Kurzstart auf Deutsch</strong></summary>
+
+1. **HACS** → Custom repositories → `Paulee196/visual-dashboard-editor` als *Integration* hinzufügen, herunterladen und Home Assistant neu starten.
+2. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Visual Dashboard Editor**.
+3. Öffne **Visual Dashboard Editor** in der Seitenleiste.
+4. Wähle ein UI-/Storage-Dashboard oder ein YAML-Dashboard mit einer `picture-elements`-Karte.
+5. Klicke ein Element im Floorplan an, ändere Werte im Inspector oder verschiebe es mit der Maus.
+6. Nach der Kontrolle auf **Speichern** klicken. Vor dem Schreiben wird ein Backup erstellt.
+
+</details>
